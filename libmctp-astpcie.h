@@ -15,17 +15,20 @@ extern "C" {
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "libmctp.h"
-#include "libmctp-alloc.h"
-
-#define MCTP_ASTPCIE_BINDING_DEFAULT_BUF 1024
 
 struct mctp_binding_astpcie;
 
 struct mctp_binding_astpcie *mctp_binding_astpcie_init(void);
 
 struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b);
+
+int mctp_binding_astpcie_poll(struct mctp_binding *binding, int timeout);
+
+int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
+			    void *payload, size_t payload_size);
 
 void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b);
 

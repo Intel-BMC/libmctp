@@ -95,6 +95,8 @@ struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *binding, size_t len)
 
 	/* todo: pools */
 	buf = __mctp_alloc(sizeof(*buf) + size);
+	if (!buf)
+		return NULL;
 
 	buf->size = size;
 	buf->start = binding->pkt_pad;
@@ -112,17 +114,18 @@ void mctp_pktbuf_free(struct mctp_pktbuf *pkt)
 
 struct mctp_hdr *mctp_pktbuf_hdr(struct mctp_pktbuf *pkt)
 {
-	return (void *)pkt->data + pkt->mctp_hdr_off;
+	return (void *)(pkt->data + pkt->mctp_hdr_off);
 }
 
 void *mctp_pktbuf_data(struct mctp_pktbuf *pkt)
 {
-	return (void *)pkt->data + pkt->mctp_hdr_off + sizeof(struct mctp_hdr);
+	return (void *)(pkt->data + pkt->mctp_hdr_off +
+			sizeof(struct mctp_hdr));
 }
 
 uint8_t mctp_pktbuf_size(struct mctp_pktbuf *pkt)
 {
-	return pkt->end - pkt->start;
+	return (uint8_t)(pkt->end - pkt->start);
 }
 
 void *mctp_pktbuf_alloc_start(struct mctp_pktbuf *pkt, size_t size)
@@ -237,7 +240,7 @@ static int mctp_msg_ctx_add_pkt(struct mctp_msg_ctx *ctx,
 		}
 	}
 
-	memcpy(ctx->buf + ctx->buf_size, mctp_pktbuf_data(pkt), len);
+	memcpy((uint8_t *)ctx->buf + ctx->buf_size, mctp_pktbuf_data(pkt), len);
 	ctx->buf_size += len;
 
 	return 0;
@@ -287,6 +290,7 @@ static struct mctp_bus *find_bus_for_eid(struct mctp *mctp, mctp_eid_t dest
 int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 		      mctp_eid_t eid)
 {
+	int res = 0;
 	/* todo: multiple busses */
 	assert(mctp->n_busses == 0);
 	mctp->n_busses = 1;
@@ -299,9 +303,9 @@ int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 	mctp->route_policy = ROUTE_ENDPOINT;
 
 	if (binding->start)
-		binding->start(binding);
+		res = binding->start(binding);
 
-	return 0;
+	return res;
 }
 
 int mctp_bridge_busses(struct mctp *mctp, struct mctp_binding *b1,
@@ -391,7 +395,8 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 
 	/* small optimisation: don't bother reassembly if we're going to
 	 * drop the packet in mctp_rx anyway */
-	if (mctp->route_policy == ROUTE_ENDPOINT && hdr->dest != bus->eid)
+	if (mctp->route_policy == ROUTE_ENDPOINT && hdr->dest != bus->eid &&
+	    hdr->dest != MCTP_EID_NULL && hdr->dest != MCTP_EID_BROADCAST)
 		goto out;
 
 	flags = hdr->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
@@ -403,7 +408,7 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		/* single-packet message - send straight up to rx function,
 		 * no need to create a message context */
 		len = pkt->end - pkt->mctp_hdr_off - sizeof(struct mctp_hdr);
-		p = pkt->data + pkt->mctp_hdr_off + sizeof(struct mctp_hdr),
+		p = pkt->data + pkt->mctp_hdr_off + sizeof(struct mctp_hdr);
 		mctp_rx(mctp, bus, hdr->src, hdr->dest, p, len);
 		break;
 
@@ -553,7 +558,7 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 		hdr->flags_seq_tag |= (i & MCTP_HDR_SEQ_MASK)
 				      << MCTP_HDR_SEQ_SHIFT;
 
-		memcpy(mctp_pktbuf_data(pkt), msg + p, payload_len);
+		memcpy(mctp_pktbuf_data(pkt), (uint8_t *)msg + p, payload_len);
 
 		/* add to tx queue */
 		if (bus->tx_queue_tail)

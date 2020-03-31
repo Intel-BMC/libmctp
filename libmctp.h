@@ -39,16 +39,15 @@ struct mctp_hdr {
 #define MCTP_BTU 64
 #define MCTP_PACKET_SIZE(unit) ((unit) + sizeof(struct mctp_hdr))
 
+struct mctp_binding;
 /* packet buffers */
 
 struct mctp_pktbuf {
 	size_t start, end, size;
 	size_t mctp_hdr_off;
 	struct mctp_pktbuf *next;
-	unsigned char data[];
+	uint8_t data[];
 };
-
-struct mctp_binding;
 
 struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *hw, size_t len);
 void mctp_pktbuf_free(struct mctp_pktbuf *pkt);
@@ -98,8 +97,8 @@ struct mctp_binding {
 	uint8_t version;
 	struct mctp_bus *bus;
 	struct mctp *mctp;
-	int pkt_size;
-	int pkt_pad;
+	size_t pkt_size;
+	size_t pkt_pad;
 	int (*start)(struct mctp_binding *binding);
 	int (*tx)(struct mctp_binding *binding, struct mctp_pktbuf *pkt);
 	mctp_rx_fn control_rx;

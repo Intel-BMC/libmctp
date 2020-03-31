@@ -34,6 +34,7 @@ target_link_libraries (test_serial mctp_intel)
 add_test (NAME serial COMMAND test_serial)
 
 add_executable (test_astpcie tests/test_astpcie.c)
+target_link_options(test_astpcie PRIVATE -z muldefs)
 target_link_libraries (test_astpcie mctp_intel)
 add_test (NAME astpcie COMMAND test_astpcie)
 
@@ -46,5 +47,5 @@ target_link_libraries (test_smbus mctp_intel)
 add_test (NAME smbus COMMAND test_smbus)
 
 install (TARGETS mctp_intel DESTINATION lib)
-install (FILES libmctp.h libmctp-smbus.h libmctp-cmds.h DESTINATION include)
+install (FILES libmctp.h libmctp-cmds.h libmctp-smbus.h libmctp-astpcie.h DESTINATION include)
 
