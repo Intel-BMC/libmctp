@@ -51,11 +51,111 @@ static int mctp_binding_astpcie_start(struct mctp_binding *binding)
 }
 
 /*
+ * Initialize medium specific header with defaults
+ */
+static int mctp_astpcie_medium_specific_initialize(struct mctp_pktbuf *pkt)
+{
+	struct pcie_header *header = (struct pcie_header *)pkt->data;
+	size_t len = mctp_pktbuf_end_index(pkt);
+	size_t dword_len;
+	size_t pad_len;
+	memset(header, 0, sizeof(*header));
+
+	header->r_fmt_type_rout =
+		(PCIE_HEADER_FMT << PCIE_FTR_FMT_SHIFT |
+		 PCIE_HEADER_TYPE << PCIE_FTR_TYPE_SHIFT |
+		 PCIE_HEADER_ROUTING << PCIE_FTR_ROUTING_SHIFT);
+
+	header->r_trcl_r = PCIE_HEADER_TC << PCIE_TR_TRCL_SHIFT;
+
+	header->td_ep_attr_r_l1 = (PCIE_HEADER_TD << PCIE_TEARL_SHIFT_TD |
+				   PCIE_HEADER_EP << PCIE_TEARL_SHIFT_EP |
+				   PCIE_HEADER_ATTR << PCIE_TEARL_ATTR_SHIFT);
+
+	/* calculate number of padding bytes to align to uint32_t */
+	pad_len = PCIE_COUNT_PAD(len);
+
+	/* Length of the PCIe VDM Data in dwords */
+	dword_len = (len + pad_len) / sizeof(uint32_t);
+	header->td_ep_attr_r_l1 |=
+		(uint8_t)(UCHAR_MAX & (dword_len >> CHAR_BIT));
+	header->len2 = (uint8_t)(dword_len);
+
+	/* store padding together with VDM code */
+	header->pcitag =
+		(uint8_t)(PCIE_HEADER_MCTP_VDM_CODE << PCIE_PCITAG_MVC_SHIFT |
+			  pad_len << PCIE_PCITAG_PADLEN_SHIFT);
+	header->message_code = PCIE_HEADER_MESSAGE_CODE;
+	header->vendor_id = PCIE_HEADER_VENDOR_ID;
+
+	if (len + pad_len > MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER) {
+		mctp_prerr("incorrect payload size (actual: %zd > max: %d)",
+			   len + pad_len, MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER);
+
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Fill medium specific part of header
+ */
+static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
+{
+	struct pcie_header *header = (struct pcie_header *)pkt->data;
+
+	/* initialize header, extend length with padding */
+	if (mctp_astpcie_medium_specific_initialize(pkt) < 0)
+		return -1;
+
+	if (!header)
+		return -1;
+
+	/* placeholder for updating binding specific data in header */
+	return 0;
+}
+
+/*
  * Tx function which writes single packet to device driver
  */
 static int mctp_binding_astpcie_tx(struct mctp_binding *binding,
 				   struct mctp_pktbuf *pkt)
 {
+	int res = -1;
+	/* full mctp packet with all headers and padding */
+	ssize_t padded_pkt_len = mctp_pktbuf_end_index(pkt);
+	ssize_t num_written;
+	int i;
+
+#ifndef MCTP_HAVE_FILEIO
+	mctp_prerr("MCTP_HAVE_FILEIO required for PCIe binding");
+	return -1;
+#endif
+
+	padded_pkt_len += PCIE_COUNT_PAD(padded_pkt_len);
+	/* adjust header according to requester needs */
+	res = fill_medium_specific_header(pkt);
+	if (res < 0) {
+		mctp_prerr("medium specific header error, reason = %d", res);
+
+		return -1;
+	}
+
+	/* fill padding with 0x00 (if any) */
+	for (i = mctp_pktbuf_end_index(pkt); i < padded_pkt_len; i++)
+		pkt->data[i] = 0x00;
+
+	num_written = write((binding_to_astpcie(binding))->fd, pkt->data,
+			    padded_pkt_len);
+	if (num_written < 0 || num_written > (ssize_t)padded_pkt_len) {
+		mctp_prerr("incorrect size of data written (actual: %zd, "
+			   "requested: %zd)",
+			   num_written, padded_pkt_len);
+
+		return -1;
+	}
+
 	return 0;
 }
 

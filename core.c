@@ -128,6 +128,14 @@ uint8_t mctp_pktbuf_size(struct mctp_pktbuf *pkt)
 	return (uint8_t)(pkt->end - pkt->start);
 }
 
+/*
+ * Get Return size of header, payload and medium specific data
+ */
+uint8_t mctp_pktbuf_end_index(struct mctp_pktbuf *pkt)
+{
+	return (uint8_t)(pkt->end);
+}
+
 void *mctp_pktbuf_alloc_start(struct mctp_pktbuf *pkt, size_t size)
 {
 	assert(size <= pkt->start);

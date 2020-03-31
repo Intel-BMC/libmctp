@@ -46,6 +46,11 @@ static uint8_t data_0[16+4] = { 0x70, 0x00, 0x10, 0x05
 			      , 0xAD, 0xDE, 0x00, 0x00 /* payload + 2 pad */
 };
 
+static uint8_t data_1[16] = { 0x60, 0x00, 0x10, 0x14
+			    , 0x00, 0x00, 0x10, 0x7F
+			    , 0x00, 0x00, 0xB4, 0x1A
+			    , 0x01, 0x0B, 0x0a, 0xC8
+};
 /* clang-format on */
 
 /* payload ubuffer for test */
@@ -62,6 +67,54 @@ static void mctp_rx_test(uint8_t src_eid, void *data, void *msg, size_t len)
 	assert(*buffer++ == 0xad);
 	assert(*buffer++ == 0xde);
 	rx_runs++;
+}
+
+static void fill_payload1()
+{
+	ssize_t i;
+	for (i = 0; i < (int)sizeof(payload); i++) {
+		payload[i] = (uint8_t)i;
+	}
+	payload_size = 63;
+}
+
+/* asserts on error */
+static void check_header1(uint8_t *msg)
+{
+	size_t i;
+
+	fprintf(stderr,
+		"mgs[ 0]:%02x == data_1[ 0]:%02x,\n"
+		"mgs[15]:%02x == data_1[15]:%02x.\n",
+		msg[0], data_1[0], msg[15], data_1[15]);
+	/* check boundaries */
+	assert(msg[0] == data_1[0]);
+	assert(msg[15] == data_1[15]);
+
+	for (i = 0; i < 16; i++) {
+		if (msg[i] != data_1[i]) {
+			fprintf(stderr,
+				"Data mismatch: msg[%zd] != data_1[%zd] "
+				"(%02x vs %02x)",
+				i, i, msg[i], data_1[i]);
+			assert(msg[i] == data_1[i]);
+		}
+	}
+}
+
+/* asserts on error */
+static void check_payload1(uint8_t *msg)
+{
+	assert(payload_size == 63);
+	fprintf(stderr,
+		"mgs[ 0]:%02x == payload[ 0]:%02x,\n"
+		"mgs[62]:%02x == payload[62]:%02x,\n"
+		"padding: msg[63]:%02x.\n",
+		msg[0], payload[0], msg[62], payload[62], msg[63]);
+	/* check boundaries */
+	assert(msg[0] == payload[0]);
+	assert(msg[62] == payload[62]);
+	assert(msg[63] == 0x00);
 }
 
 static int ioctl_index = 0;
@@ -103,6 +156,20 @@ ssize_t read(int __fd, void *data, size_t data_size)
 	return 0;
 }
 
+static int write_index;
+ssize_t write(int __fd, void *data, size_t data_size)
+{
+	fprintf(stderr, "MOCK: %s\n", __func__);
+	assert(__fd == file_descriptor);
+	switch (write_index++) {
+	case 0:
+		check_header1(data);
+		check_payload1((uint8_t *)data + 16);
+		return (ssize_t)data_size;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	int res;
@@ -134,6 +201,15 @@ int main(void)
 				      sizeof(payload));
 	assert(res == 0);
 	assert(rx_runs == 1);
+
+	/* prepare data */
+	fill_payload1();
+
+	/* queue */
+	res = mctp_message_tx(mctp, TEST_OUT_EID, payload, payload_size);
+
+	/* flush */
+	mctp_binding_set_tx_enabled(&pcie->binding, true);
 
 	/* cleanup */
 	mctp_binding_astpcie_free(pcie);
