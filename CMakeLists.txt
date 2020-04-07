@@ -5,7 +5,7 @@ add_definitions (-DMCTP_HAVE_FILEIO)
 add_definitions (-DMCTP_HAVE_STDIO)
 add_definitions (-DMCTP_DEFAULT_ALLOC)
 
-add_library (mctp_intel STATIC alloc.c astlpc.c core.c log.c libmctp.h serial.c astpcie.c)
+add_library (mctp_intel STATIC alloc.c astlpc.c core.c log.c libmctp.h serial.c astpcie.c smbus.c)
 
 target_include_directories (mctp_intel PUBLIC
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -41,6 +41,10 @@ add_executable (test_cmds tests/test_cmds.c tests/test-utils.c)
 target_link_libraries (test_cmds mctp_intel)
 add_test (NAME control_commands COMMAND test_cmds)
 
+add_executable (test_smbus tests/test_smbus.c)
+target_link_libraries (test_smbus mctp_intel)
+add_test (NAME smbus COMMAND test_smbus)
+
 install (TARGETS mctp_intel DESTINATION lib)
-install (FILES libmctp.h DESTINATION include)
+install (FILES libmctp.h libmctp-smbus.h DESTINATION include)
 
