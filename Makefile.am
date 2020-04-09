@@ -2,7 +2,8 @@ ACLOCAL_AMFLAGS = -I m4
 
 lib_LTLIBRARIES = libmctp.la
 libmctp_la_SOURCES = core.c alloc.c log.c \
-		     libmctp-alloc.h libmctp-log.h
+		     libmctp-alloc.h libmctp-log.h \
+		     libmctp-cmds.h
 include_HEADERS = libmctp.h
 
 if LIBMCTP_BINDING_serial
@@ -46,7 +47,7 @@ TESTS = $(check_PROGRAMS)
 
 check_PROGRAMS = tests/test_eid tests/test_seq tests/test_bridge \
 		 tests/test_astlpc tests/test_serial \
-		 tests/test_astpcie
+		 tests/test_astpcie tests/test_cmds
 # We set a global LDADD here, as there's no way to specify it for all
 # tests. This means other targets' LDADDs need to be overridden.
 LDADD = tests/libtest-utils.a libmctp.la
