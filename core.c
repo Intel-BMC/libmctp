@@ -58,6 +58,9 @@ struct mctp {
 	/* Control message RX callback. */
 	mctp_rx_fn control_rx;
 	void *control_rx_data;
+
+	/* Endpoint UUID */
+	guid_t uuid;
 };
 
 #ifndef BUILD_ASSERT
@@ -602,6 +605,7 @@ static void mctp_ctrl_send_empty_response(struct mctp *mctp, mctp_eid_t src,
 	response_data.ic_msg_type = MCTP_CTRL_HDR_MSG_TYPE;
 	mctp_message_tx(mctp, src, &response_data, sizeof(response_data));
 }
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length)
@@ -736,4 +740,110 @@ bool encode_ctrl_cmd_get_vdm_support(
 			       MCTP_CTRL_CMD_GET_VENDOR_MESSAGE_SUPPORT);
 	vdm_support_cmd->vendor_id_set_selector = v_id_set_selector;
 	return true;
+}
+
+static inline mctp_eid_t mctp_bus_get_eid(struct mctp_bus *bus)
+{
+	return bus->eid;
+}
+
+static inline void mctp_bus_set_eid(struct mctp_bus *bus, mctp_eid_t eid)
+{
+	bus->eid = eid;
+}
+
+/*
+ * @brief Sets the EID accordingly to the provided policy and creates response.
+ * See DSP0236 1.3.0 12.3
+ */
+int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, struct mctp_bus *bus,
+				  struct mctp_ctrl_cmd_set_eid *request,
+				  struct mctp_ctrl_resp_set_eid *response)
+{
+	if (!request || !response)
+		return -1;
+	if (request->eid == MCTP_EID_BROADCAST ||
+	    request->eid == MCTP_EID_NULL) {
+		response->completion_code = MCTP_CTRL_CC_ERROR_INVALID_DATA;
+		response->eid_set = mctp_bus_get_eid(bus);
+		return 0;
+	}
+
+	switch (request->operation) {
+	case 0: /* Set EID */
+		/* TODO: Add tracking for bus owner and static reassignment. */
+		if (mctp->n_busses == 1 || bus->eid == 0x0) {
+			mctp_bus_set_eid(bus, request->eid);
+			response->eid_set = request->eid;
+			MCTP_SET_EID_STATUS(MCTP_SET_EID_ACCEPTED,
+					    response->status);
+			/* TODO: fix the status field. */
+		} else {
+			MCTP_SET_EID_STATUS(MCTP_SET_EID_REJECTED,
+					    response->status);
+			response->eid_set = bus->eid;
+		}
+		response->completion_code = MCTP_CTRL_CC_SUCCESS;
+		break;
+	case 1: /* Force EID */
+		/* TODO: Need to figure out for static EID devices */
+		mctp_bus_set_eid(bus, request->eid);
+		response->completion_code = MCTP_CTRL_CC_SUCCESS;
+		response->eid_set = request->eid;
+		break;
+	default: /* Reset EID and Set Discovered Flag */
+		response->completion_code = MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD;
+	}
+	return 0;
+}
+
+/*
+ * @brief Retrieves a byte of medium-specific data from the binding.
+ * See DSP0236 1.3.0 12.4 (byte 4).
+ */
+uint8_t mctp_binding_get_medium_info(struct mctp_binding *binding)
+{
+	return binding->info;
+}
+
+/*
+ * @brief Creates control message response for Get Endpoint ID.
+ * See DSP0236 1.3.0 12.4.
+ */
+int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, struct mctp_bus *bus,
+				  bool bus_owner,
+				  struct mctp_ctrl_resp_get_eid *response)
+{
+	if (response == NULL)
+		return -1;
+	response->eid = mctp_bus_get_eid(bus);
+	response->eid_type = 0;
+	if (mctp->route_policy == ROUTE_BRIDGE ||
+	    bus_owner == true) {
+		response->eid_type |= (1 << 4);
+	}
+	/* TODO: support dynamic EID? */
+	response->eid_type |= (1 << 1);
+	response->medium_data = mctp_binding_get_medium_info(bus->binding);
+	response->completion_code = MCTP_CTRL_CC_SUCCESS;
+	return 0;
+}
+
+/*
+ * @brief Creates control message response for Get Endpoint UUID.
+ * See DSP0236 1.3.0 12.5.
+ */
+int mctp_ctrl_cmd_get_endpoint_uuid(struct mctp *mctp,
+				    struct mctp_ctrl_resp_get_uuid *response)
+{
+	if (response == NULL)
+		return -1;
+	response->completion_code = MCTP_CTRL_CC_SUCCESS;
+	response->uuid = mctp->uuid;
+	return 0;
+}
+
+void mctp_set_uuid(struct mctp *mctp, guid_t uuid)
+{
+	mctp->uuid = uuid;
 }

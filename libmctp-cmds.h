@@ -112,6 +112,47 @@ struct mctp_ctrl_cmd_get_vdm_support {
 
 #define MCTP_CTRL_CC_SET_EID_OP_MASK 0x03
 
+/* MCTP Set Endpoint ID response fields
+ * See DSP0236 v1.3.0 Table 14.
+ */
+#define MCTP_SET_EID_STATUS(status, field)                                     \
+	field = ((field)&0xcf) | ((status) << 4)
+#define MCTP_SET_EID_ACCEPTED 0x0
+#define MCTP_SET_EID_REJECTED 0x1
+typedef union {
+	struct {
+		uint32_t data0;
+		uint16_t data1;
+		uint16_t data2;
+		uint16_t data3;
+		uint8_t data4[6];
+	} __attribute__((__packed__)) canonical;
+	uint8_t raw[16];
+} guid_t;
+
+struct mctp_ctrl_resp_get_eid {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	mctp_eid_t eid;
+	uint8_t eid_type;
+	uint8_t medium_data;
+
+} __attribute__((__packed__));
+
+struct mctp_ctrl_resp_get_uuid {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	guid_t uuid;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_resp_set_eid {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	uint8_t status;
+	mctp_eid_t eid_set;
+	uint8_t eid_pool_size;
+} __attribute__((__packed__));
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length);
@@ -139,6 +180,8 @@ bool encode_ctrl_cmd_get_msg_type_support(
 bool encode_ctrl_cmd_get_vdm_support(
 	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t v_id_set_selector);
+
+void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 
 #ifdef __cplusplus
 }
