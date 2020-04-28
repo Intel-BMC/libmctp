@@ -21,37 +21,37 @@
 
 #include "prv-astpcie.h"
 
-#define TEST_EID   10
+#define TEST_EID 10
 
 int main(void)
 {
-    int res;
-    struct mctp *mctp;
-    struct mctp_binding *binding;
-    struct mctp_binding_astpcie *pcie;
+	int res;
+	struct mctp *mctp;
+	struct mctp_binding *binding;
+	struct mctp_binding_astpcie *pcie;
 
-    mctp_set_log_stdio(MCTP_LOG_DEBUG);
+	mctp_set_log_stdio(MCTP_LOG_DEBUG);
 
-    mctp = mctp_init();
-    assert(mctp);
+	mctp = mctp_init();
+	assert(mctp);
 
-    pcie = mctp_binding_astpcie_init();
-    assert(pcie);
+	pcie = mctp_binding_astpcie_init();
+	assert(pcie);
 
-    binding = mctp_binding_astpcie_core(pcie);
-    assert(binding);
+	binding = mctp_binding_astpcie_core(pcie);
+	assert(binding);
 
-    assert(strcmp(pcie->binding.name, "astpcie") == 0);
-    assert(pcie->binding.version == 1);
-    assert(pcie->binding.tx != NULL);
-    assert(pcie->binding.start != NULL);
+	assert(strcmp(pcie->binding.name, "astpcie") == 0);
+	assert(pcie->binding.version == 1);
+	assert(pcie->binding.tx != NULL);
+	assert(pcie->binding.start != NULL);
 
-    res = mctp_register_bus(mctp, &pcie->binding, TEST_EID);
-    assert(res == 0);
+	res = mctp_register_bus(mctp, &pcie->binding, TEST_EID);
+	assert(res == 0);
 
-    /* cleanup */
-    mctp_binding_astpcie_free(pcie);
-    __mctp_free(mctp);
+	/* cleanup */
+	mctp_binding_astpcie_free(pcie);
+	__mctp_free(mctp);
 
-    return 0;
+	return 0;
 }

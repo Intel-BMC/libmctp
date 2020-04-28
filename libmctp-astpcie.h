@@ -19,7 +19,7 @@ extern "C" {
 #include "libmctp.h"
 #include "libmctp-alloc.h"
 
-#define MCTP_ASTPCIE_BINDING_DEFAULT_BUF  1024
+#define MCTP_ASTPCIE_BINDING_DEFAULT_BUF 1024
 
 struct mctp_binding_astpcie;
 

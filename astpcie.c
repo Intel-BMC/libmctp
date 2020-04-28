@@ -16,40 +16,44 @@
 
 #include "prv-astpcie.h"
 
-#define binding_to_astpcie(b) \
-    container_of(b, struct mctp_binding_astpcie, binding)
+#define binding_to_astpcie(b)                                                  \
+	container_of(b, struct mctp_binding_astpcie, binding)
 
 /* dummy start function */
-int mctp_binding_astpcie_start(struct mctp_binding *binding) {
-    return -1;
+int mctp_binding_astpcie_start(struct mctp_binding *binding)
+{
+	return -1;
 }
 
 /* dummy tx function */
 int mctp_binding_astpcie_tx(struct mctp_binding *binding,
-                         struct mctp_pktbuf *pkt) {
-    return -1;
+			    struct mctp_pktbuf *pkt)
+{
+	return -1;
 }
 
 struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 {
-    struct mctp_binding_astpcie *pcie;
-    pcie = __mctp_alloc(sizeof(*pcie));
-    memset(pcie, 0, sizeof(*pcie));
+	struct mctp_binding_astpcie *pcie;
+	pcie = __mctp_alloc(sizeof(*pcie));
+	memset(pcie, 0, sizeof(*pcie));
 
-    pcie->binding.name = "astpcie";
-    pcie->binding.version = 1;
-    pcie->binding.tx = mctp_binding_astpcie_tx;
-    pcie->binding.start = mctp_binding_astpcie_start;
-    pcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
-    pcie->binding.pkt_pad = 0;
+	pcie->binding.name = "astpcie";
+	pcie->binding.version = 1;
+	pcie->binding.tx = mctp_binding_astpcie_tx;
+	pcie->binding.start = mctp_binding_astpcie_start;
+	pcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
+	pcie->binding.pkt_pad = 0;
 
-    return pcie;
+	return pcie;
 }
 
-void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b) {
-    __mctp_free(b);
+void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b)
+{
+	__mctp_free(b);
 }
 
-struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b) {
-    return &b->binding;
+struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b)
+{
+	return &b->binding;
 }
