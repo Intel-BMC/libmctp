@@ -650,3 +650,28 @@ int mctp_set_rx_ctrl(struct mctp *mctp, mctp_rx_fn fn, void *data)
 	mctp->control_rx_data = data;
 	return 0;
 }
+
+/* TODO: Will be revisiting the instance id management is done by upper
+ * layer or the control command by itself.
+ */
+static void encode_ctrl_cmd_header(struct mctp_ctrl_hdr *mctp_ctrl_hdr,
+				   uint8_t rq_dgram_inst, uint8_t cmd_code)
+{
+	mctp_ctrl_hdr->ic_msg_type = MCTP_CTRL_HDR_MSG_TYPE;
+	mctp_ctrl_hdr->rq_dgram_inst = rq_dgram_inst;
+	mctp_ctrl_hdr->command_code = cmd_code;
+}
+
+bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
+				  uint8_t rq_dgram_inst,
+				  mctp_ctrl_cc_set_eid_op op, uint8_t eid)
+{
+	if (!set_eid_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&set_eid_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_SET_ENDPOINT_ID);
+	set_eid_cmd->operation = op;
+	set_eid_cmd->eid = eid;
+	return true;
+}
