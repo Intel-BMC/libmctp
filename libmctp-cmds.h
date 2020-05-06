@@ -41,6 +41,28 @@ struct mctp_ctrl_cmd_set_eid {
 	uint8_t eid;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_cmd_get_eid {
+	struct mctp_ctrl_hdr ctrl_msg_hdr;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_cmd_get_uuid {
+	struct mctp_ctrl_hdr ctrl_msg_hdr;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_cmd_get_mctp_ver_support {
+	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	uint8_t msg_type_number;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_get_msg_type_support {
+	struct mctp_ctrl_hdr ctrl_msg_hdr;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_cmd_get_vdm_support {
+	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	uint8_t vendor_id_set_selector;
+} __attribute__((__packed__));
+
 #define MCTP_CTRL_HDR_MSG_TYPE 0
 #define MCTP_CTRL_HDR_FLAG_REQUEST (1 << 7)
 #define MCTP_CTRL_HDR_FLAG_DGRAM (1 << 6)
@@ -99,6 +121,24 @@ int mctp_set_rx_ctrl(struct mctp *mctp, mctp_rx_fn fn, void *data);
 bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
 				  uint8_t rq_dgram_inst,
 				  mctp_ctrl_cc_set_eid_op op, uint8_t eid);
+
+bool encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
+			     uint8_t rq_dgram_inst);
+
+bool encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
+			      uint8_t rq_dgram_inst);
+
+bool encode_ctrl_cmd_get_ver_support(
+	struct mctp_ctrl_cmd_get_mctp_ver_support *mctp_ver_support_cmd,
+	uint8_t rq_dgram_inst, uint8_t msg_type_number);
+
+bool encode_ctrl_cmd_get_msg_type_support(
+	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
+	uint8_t rq_dgram_inst);
+
+bool encode_ctrl_cmd_get_vdm_support(
+	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
+	uint8_t rq_dgram_inst, uint8_t v_id_set_selector);
 
 #ifdef __cplusplus
 }

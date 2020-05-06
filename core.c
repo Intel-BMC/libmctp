@@ -675,3 +675,65 @@ bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
 	set_eid_cmd->eid = eid;
 	return true;
 }
+
+bool encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
+			     uint8_t rq_dgram_inst)
+{
+	if (!get_eid_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&get_eid_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_ENDPOINT_ID);
+	return true;
+}
+
+bool encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
+			      uint8_t rq_dgram_inst)
+{
+	if (!get_uuid_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&get_uuid_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_ENDPOINT_UUID);
+	return true;
+}
+
+bool encode_ctrl_cmd_get_ver_support(
+	struct mctp_ctrl_cmd_get_mctp_ver_support *mctp_ver_support_cmd,
+	uint8_t rq_dgram_inst, uint8_t msg_type_number)
+{
+	if (!mctp_ver_support_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&mctp_ver_support_cmd->ctrl_msg_hdr,
+			       rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_VERSION_SUPPORT);
+	mctp_ver_support_cmd->msg_type_number = msg_type_number;
+	return true;
+}
+
+bool encode_ctrl_cmd_get_msg_type_support(
+	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
+	uint8_t rq_dgram_inst)
+{
+	if (!msg_type_support_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&msg_type_support_cmd->ctrl_msg_hdr,
+			       rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_MESSAGE_TYPE_SUPPORT);
+	return true;
+}
+
+bool encode_ctrl_cmd_get_vdm_support(
+	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
+	uint8_t rq_dgram_inst, uint8_t v_id_set_selector)
+{
+	if (!vdm_support_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&vdm_support_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_VENDOR_MESSAGE_SUPPORT);
+	vdm_support_cmd->vendor_id_set_selector = v_id_set_selector;
+	return true;
+}
