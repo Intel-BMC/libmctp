@@ -42,7 +42,8 @@ uint8_t mctp_msg_src[2 * MCTP_BTU];
 
 static bool seen;
 
-static void rx_message(uint8_t eid, void *data, void *msg, size_t len)
+static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
+		       void *prv)
 {
 	uint8_t type;
 
@@ -110,7 +111,7 @@ int main(void)
 
 	/* Transmit a message from A to B */
 	rc = mctp_message_tx(scenario[0].mctp, 9, mctp_msg_src,
-			     sizeof(mctp_msg_src));
+			     sizeof(mctp_msg_src), NULL);
 	assert(rc == 0);
 
 	/* Read the message at B from A */

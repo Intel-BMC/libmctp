@@ -56,9 +56,10 @@ struct ctx {
 	int n_clients;
 };
 
-static void tx_message(struct ctx *ctx, mctp_eid_t eid, void *msg, size_t len)
+static void tx_message(struct ctx *ctx, mctp_eid_t eid, void *msg, size_t len,
+		       void *prv)
 {
-	mctp_message_tx(ctx->mctp, eid, msg, len);
+	mctp_message_tx(ctx->mctp, eid, msg, len, NULL);
 }
 
 static void client_remove_inactive(struct ctx *ctx)
@@ -79,7 +80,8 @@ static void client_remove_inactive(struct ctx *ctx)
 	}
 }
 
-static void rx_message(uint8_t eid, void *data, void *msg, size_t len)
+static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
+		       void *prv)
 {
 	struct ctx *ctx = data;
 	struct iovec iov[2];
@@ -364,9 +366,9 @@ static int client_process_recv(struct ctx *ctx, int idx)
 			idx, eid, rc - 1);
 
 	if (eid == ctx->local_eid)
-		rx_message(eid, ctx, ctx->buf + 1, rc - 1);
+		rx_message(eid, ctx, ctx->buf + 1, rc - 1, NULL);
 	else
-		tx_message(ctx, eid, ctx->buf + 1, rc - 1);
+		tx_message(ctx, eid, ctx->buf + 1, rc - 1, NULL);
 
 	return 0;
 

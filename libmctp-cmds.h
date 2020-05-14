@@ -153,7 +153,7 @@ struct mctp_ctrl_resp_set_eid {
 
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
-			  size_t length);
+			  size_t length, void *msg_binding_private);
 
 int mctp_set_rx_ctrl(struct mctp *mctp, mctp_rx_fn fn, void *data);
 

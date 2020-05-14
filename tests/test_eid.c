@@ -16,7 +16,7 @@ struct test_ctx {
 	mctp_eid_t src_eid;
 };
 
-static void test_rx(uint8_t eid, void *data, void *msg, size_t len)
+static void test_rx(uint8_t eid, void *data, void *msg, size_t len, void *prv)
 {
 	struct test_ctx *ctx = data;
 

@@ -48,6 +48,8 @@ struct mctp_pktbuf {
 	size_t start, end, size;
 	size_t mctp_hdr_off;
 	struct mctp_pktbuf *next;
+	/* binding private data */
+	void *msg_binding_private;
 	uint8_t data[];
 };
 
@@ -87,12 +89,13 @@ int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 int mctp_bridge_busses(struct mctp *mctp, struct mctp_binding *b1,
 		       struct mctp_binding *b2);
 
-typedef void (*mctp_rx_fn)(uint8_t src_eid, void *data, void *msg, size_t len);
+typedef void (*mctp_rx_fn)(uint8_t src_eid, void *data, void *msg, size_t len,
+			   void *msg_binding_private);
 
 int mctp_set_rx_all(struct mctp *mctp, mctp_rx_fn fn, void *data);
 
 int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg,
-		    size_t msg_len);
+		    size_t msg_len, void *msg_binding_private);
 
 /* hardware bindings */
 struct mctp_binding {

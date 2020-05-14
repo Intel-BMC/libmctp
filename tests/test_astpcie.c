@@ -58,7 +58,8 @@ static uint8_t payload[64];
 static size_t payload_size = sizeof(payload);
 
 static int rx_runs;
-static void mctp_rx_test(uint8_t src_eid, void *data, void *msg, size_t len)
+static void mctp_rx_test(uint8_t src_eid, void *data, void *msg, size_t len,
+			 void *msg_binding_private)
 {
 	uint8_t *buffer = msg;
 	printf("RX handler: Eid: %d, len: %zd, data: %p, msg: %p, %x\n",
@@ -206,7 +207,7 @@ int main(void)
 	fill_payload1();
 
 	/* queue */
-	res = mctp_message_tx(mctp, TEST_OUT_EID, payload, payload_size);
+	res = mctp_message_tx(mctp, TEST_OUT_EID, payload, payload_size, NULL);
 
 	/* flush */
 	mctp_binding_set_tx_enabled(&pcie->binding, true);

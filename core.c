@@ -76,7 +76,7 @@ struct mctp {
 
 static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 				  mctp_eid_t src, mctp_eid_t dest, void *msg,
-				  size_t msg_len);
+				  size_t msg_len, void *msg_binding_private);
 
 /*
  * Receive the complete MCTP message and route it.
@@ -84,7 +84,8 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
  *     'buf' is not NULL.
  */
 static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
-		    mctp_eid_t dest, void *buf, size_t len);
+		    mctp_eid_t dest, void *buf, size_t len,
+		    void *msg_binding_private);
 
 struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *binding, size_t len)
 {
@@ -103,6 +104,7 @@ struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *binding, size_t len)
 	buf->end = buf->start + len;
 	buf->mctp_hdr_off = buf->start;
 	buf->next = NULL;
+	buf->msg_binding_private = NULL;
 
 	return buf;
 }
@@ -342,7 +344,8 @@ int mctp_bridge_busses(struct mctp *mctp, struct mctp_binding *b1,
 }
 
 static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
-		    mctp_eid_t dest, void *buf, size_t len)
+		    mctp_eid_t dest, void *buf, size_t len,
+		    void *msg_binding_private)
 {
 	assert(buf != NULL);
 
@@ -363,12 +366,13 @@ static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 			 * was handled by the control callbacks. There is no need to
 			 * handle it in the default callback.
 			 */
-			if (mctp_ctrl_handle_msg(mctp, bus, src, dest, buf,
-						 len))
+			if (mctp_ctrl_handle_msg(mctp, bus, src, dest, buf, len,
+						 msg_binding_private))
 				return;
 		}
 		if (mctp->message_rx)
-			mctp->message_rx(src, mctp->message_rx_data, buf, len);
+			mctp->message_rx(src, mctp->message_rx_data, buf, len,
+					 msg_binding_private);
 		return;
 	}
 
@@ -381,7 +385,7 @@ static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 				continue;
 
 			mctp_message_tx_on_bus(mctp, dest_bus, src, dest, buf,
-					       len);
+					       len, NULL);
 		}
 	}
 }
@@ -417,13 +421,16 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		 * no need to create a message context */
 		len = pkt->end - pkt->mctp_hdr_off - sizeof(struct mctp_hdr);
 		p = pkt->data + pkt->mctp_hdr_off + sizeof(struct mctp_hdr);
-		mctp_rx(mctp, bus, hdr->src, hdr->dest, p, len);
+		mctp_rx(mctp, bus, hdr->src, hdr->dest, p, len,
+			pkt->msg_binding_private);
 		break;
 
 	case MCTP_HDR_FLAG_SOM:
 		/* start of a new message - start the new context for
 		 * future message reception. If an existing context is
 		 * already present, drop it. */
+		/* TODO: add test if physical addressing matches for sequential
+		 * packets */
 		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag);
 		if (ctx) {
 			mctp_msg_ctx_reset(ctx);
@@ -459,7 +466,7 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		rc = mctp_msg_ctx_add_pkt(ctx, pkt);
 		if (!rc)
 			mctp_rx(mctp, bus, ctx->src, ctx->dest, ctx->buf,
-				ctx->buf_size);
+				ctx->buf_size, pkt->msg_binding_private);
 
 		mctp_msg_ctx_drop(ctx);
 		break;
@@ -552,7 +559,7 @@ void mctp_binding_set_tx_enabled(struct mctp_binding *binding, bool enable)
 
 static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 				  mctp_eid_t src, mctp_eid_t dest, void *msg,
-				  size_t msg_len)
+				  size_t msg_len, void *msg_binding_private)
 {
 	size_t max_payload_len, payload_len, p;
 	struct mctp_pktbuf *pkt;
@@ -575,6 +582,10 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 					payload_len + sizeof(*hdr));
 		hdr = mctp_pktbuf_hdr(pkt);
 
+		/* store binding specific private data;
+		   For EOM packet, free binding private data
+		*/
+		pkt->msg_binding_private = msg_binding_private;
 		/* todo: tags */
 		hdr->ver = bus->binding->version & 0xf;
 		hdr->dest = dest;
@@ -607,12 +618,13 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 }
 
 int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg,
-		    size_t msg_len)
+		    size_t msg_len, void *msg_binding_private)
 {
 	struct mctp_bus *bus;
 
 	bus = find_bus_for_eid(mctp, eid);
-	return mctp_message_tx_on_bus(mctp, bus, bus->eid, eid, msg, msg_len);
+	return mctp_message_tx_on_bus(mctp, bus, bus->eid, eid, msg, msg_len,
+				      msg_binding_private);
 }
 
 static inline bool mctp_ctrl_cmd_is_control(struct mctp_ctrl_msg_hdr *hdr)
@@ -629,7 +641,8 @@ static inline bool mctp_ctrl_cmd_is_transport(struct mctp_ctrl_msg_hdr *hdr)
 
 static void mctp_ctrl_send_empty_response(struct mctp *mctp, mctp_eid_t src,
 					  uint8_t command_code,
-					  uint8_t response_code)
+					  uint8_t response_code,
+					  void *msg_binding_private)
 {
 	struct mctp_ctrl_msg_hdr response_data;
 
@@ -637,12 +650,13 @@ static void mctp_ctrl_send_empty_response(struct mctp *mctp, mctp_eid_t src,
 	response_data.command_code = command_code;
 	response_data.completion_code = response_code;
 	response_data.ic_msg_type = MCTP_CTRL_HDR_MSG_TYPE;
-	mctp_message_tx(mctp, src, &response_data, sizeof(response_data));
+	mctp_message_tx(mctp, src, &response_data, sizeof(response_data),
+			msg_binding_private);
 }
 
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
-			  size_t length)
+			  size_t length, void *msg_binding_private)
 {
 	struct mctp_ctrl_msg_hdr *msg_hdr = (struct mctp_ctrl_msg_hdr *)buffer;
 	/* Control message is received.
@@ -657,7 +671,7 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 		if (mctp->control_rx != NULL) {
 			/* MCTP endpoint handler */
 			mctp->control_rx(src, mctp->control_rx_data, buffer,
-					 length);
+					 length, msg_binding_private);
 			return true;
 		}
 	} else if (mctp_ctrl_cmd_is_transport(msg_hdr)) {
@@ -665,14 +679,18 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			/* MCTP bus binding handler */
 			bus->binding->control_rx(src,
 						 bus->binding->control_rx_data,
-						 buffer, length);
+						 buffer, length,
+						 msg_binding_private);
 			return true;
 		}
 	} else {
 		/* Unrecognized command code. */
+		/* TODO: move to service when possible, as library shall remain
+		   simple tool to handle rx/tx flow without extended logic */
 		mctp_ctrl_send_empty_response(
 			mctp, src, msg_hdr->command_code,
-			MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD);
+			MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD,
+			msg_binding_private);
 		return true;
 	}
 	/*

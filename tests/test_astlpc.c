@@ -124,7 +124,8 @@ int mctp_astlpc_mmio_lpc_write(void *data, void *buf, long offset, size_t len)
 	return 0;
 }
 
-static void rx_message(uint8_t eid, void *data, void *msg, size_t len)
+static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
+		       void *prv)
 {
 	uint8_t type;
 
@@ -186,7 +187,7 @@ int main(void)
 	mmio.kcs[MCTP_ASTLPC_KCS_REG_STATUS] &= ~KCS_STATUS_OBF;
 
 	/* BMC sends a message */
-	rc = mctp_message_tx(mctp, 9, msg, sizeof(msg));
+	rc = mctp_message_tx(mctp, 9, msg, sizeof(msg), NULL);
 	assert(rc == 0 || rc == TX_DISABLED_ERR);
 
 	/* Host receives a message */

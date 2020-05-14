@@ -103,6 +103,7 @@ static int mctp_astpcie_medium_specific_initialize(struct mctp_pktbuf *pkt)
  */
 static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
 {
+	struct pcie_request_extra *extra = pkt->msg_binding_private;
 	struct pcie_header *header = (struct pcie_header *)pkt->data;
 
 	/* initialize header, extend length with padding */
@@ -112,7 +113,24 @@ static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
 	if (!header)
 		return -1;
 
-	/* placeholder for updating binding specific data in header */
+	/* use defaults */
+	if (!extra)
+		return 0;
+
+	if (extra->routing < PCIE_ROUTE_TO_ROOT_COMPLEX ||
+	    extra->routing == PCIE_RESERVED ||
+	    extra->routing > PCIE_BROADCAST_FROM_ROOT)
+		return -1;
+
+	header->r_fmt_type_rout |=
+		(uint8_t)(extra->routing << PCIE_FTR_TYPE_SHIFT);
+
+	memcpy(&header->pci_target_id, &extra->remote_id,
+	       sizeof(extra->remote_id));
+
+	memcpy(&header->pci_requester_id, &extra->local_id,
+	       sizeof(extra->local_id));
+
 	return 0;
 }
 
@@ -195,6 +213,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	struct mctp_binding_astpcie *pcie = binding_to_astpcie(binding);
 	struct mctp_pktbuf *pkt;
 	struct pcie_header *header;
+	struct pcie_request_extra extra;
 	uint8_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
 	ssize_t data_len;
 	ssize_t data_read;
@@ -232,6 +251,11 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 		     data_len - sizeof(struct mctp_hdr),
 		     header->td_ep_attr_r_l1, header->len2);
 
+	memcpy(&extra.remote_id, &header->pci_requester_id,
+	       sizeof(extra.remote_id));
+	memcpy(&extra.local_id, &header->pci_target_id, sizeof(extra.local_id));
+	extra.routing = header->r_fmt_type_rout & PCIE_FTR_ROUTING_MASK;
+
 	pkt = mctp_pktbuf_alloc(binding, 0);
 	if (!pkt) {
 		mctp_prerr("pktbuf allocation failed");
@@ -252,6 +276,8 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 
 	mctp_prdebug("dest: %x, src: %x", (mctp_pktbuf_hdr(pkt))->dest,
 		     (mctp_pktbuf_hdr(pkt))->src);
+
+	pkt->msg_binding_private = &extra;
 
 	mctp_bus_rx(binding, pkt);
 
