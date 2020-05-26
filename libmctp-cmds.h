@@ -32,11 +32,11 @@ typedef enum {
 	force_eid,
 	reset_eid,
 	set_discovered_flag
-} mctp_ctrl_cc_set_eid_op;
+} mctp_ctrl_cmd_set_eid_op;
 
 struct mctp_ctrl_cmd_set_eid {
 	struct mctp_ctrl_hdr ctrl_msg_hdr;
-	mctp_ctrl_cc_set_eid_op operation : 2;
+	mctp_ctrl_cmd_set_eid_op operation : 2;
 	uint8_t : 6;
 	uint8_t eid;
 } __attribute__((__packed__));
@@ -110,8 +110,6 @@ struct mctp_ctrl_cmd_get_vdm_support {
 #define MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD 0x05
 /* 0x80 - 0xFF are command specific */
 
-#define MCTP_CTRL_CC_SET_EID_OP_MASK 0x03
-
 /* MCTP Set Endpoint ID response fields
  * See DSP0236 v1.3.0 Table 14.
  */
@@ -161,23 +159,23 @@ int mctp_set_rx_ctrl(struct mctp *mctp, mctp_rx_fn fn, void *data);
 
 bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
 				  uint8_t rq_dgram_inst,
-				  mctp_ctrl_cc_set_eid_op op, uint8_t eid);
+				  mctp_ctrl_cmd_set_eid_op op, uint8_t eid);
 
-bool encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
-			     uint8_t rq_dgram_inst);
+bool mctp_encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
+				  uint8_t rq_dgram_inst);
 
-bool encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
-			      uint8_t rq_dgram_inst);
+bool mctp_encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
+				   uint8_t rq_dgram_inst);
 
-bool encode_ctrl_cmd_get_ver_support(
+bool mctp_encode_ctrl_cmd_get_ver_support(
 	struct mctp_ctrl_cmd_get_mctp_ver_support *mctp_ver_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t msg_type_number);
 
-bool encode_ctrl_cmd_get_msg_type_support(
+bool mctp_encode_ctrl_cmd_get_msg_type_support(
 	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
 	uint8_t rq_dgram_inst);
 
-bool encode_ctrl_cmd_get_vdm_support(
+bool mctp_encode_ctrl_cmd_get_vdm_support(
 	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t v_id_set_selector);
 

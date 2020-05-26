@@ -668,7 +668,7 @@ static void encode_ctrl_cmd_header(struct mctp_ctrl_hdr *mctp_ctrl_hdr,
 
 bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
 				  uint8_t rq_dgram_inst,
-				  mctp_ctrl_cc_set_eid_op op, uint8_t eid)
+				  mctp_ctrl_cmd_set_eid_op op, uint8_t eid)
 {
 	if (!set_eid_cmd)
 		return false;
@@ -680,8 +680,8 @@ bool mctp_encode_ctrl_cmd_set_eid(struct mctp_ctrl_cmd_set_eid *set_eid_cmd,
 	return true;
 }
 
-bool encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
-			     uint8_t rq_dgram_inst)
+bool mctp_encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
+				  uint8_t rq_dgram_inst)
 {
 	if (!get_eid_cmd)
 		return false;
@@ -691,8 +691,8 @@ bool encode_ctrl_cmd_get_eid(struct mctp_ctrl_cmd_get_eid *get_eid_cmd,
 	return true;
 }
 
-bool encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
-			      uint8_t rq_dgram_inst)
+bool mctp_encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
+				   uint8_t rq_dgram_inst)
 {
 	if (!get_uuid_cmd)
 		return false;
@@ -702,7 +702,7 @@ bool encode_ctrl_cmd_get_uuid(struct mctp_ctrl_cmd_get_uuid *get_uuid_cmd,
 	return true;
 }
 
-bool encode_ctrl_cmd_get_ver_support(
+bool mctp_encode_ctrl_cmd_get_ver_support(
 	struct mctp_ctrl_cmd_get_mctp_ver_support *mctp_ver_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t msg_type_number)
 {
@@ -716,7 +716,7 @@ bool encode_ctrl_cmd_get_ver_support(
 	return true;
 }
 
-bool encode_ctrl_cmd_get_msg_type_support(
+bool mctp_encode_ctrl_cmd_get_msg_type_support(
 	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
 	uint8_t rq_dgram_inst)
 {
@@ -729,7 +729,7 @@ bool encode_ctrl_cmd_get_msg_type_support(
 	return true;
 }
 
-bool encode_ctrl_cmd_get_vdm_support(
+bool mctp_encode_ctrl_cmd_get_vdm_support(
 	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t v_id_set_selector)
 {
@@ -818,8 +818,7 @@ int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, struct mctp_bus *bus,
 		return -1;
 	response->eid = mctp_bus_get_eid(bus);
 	response->eid_type = 0;
-	if (mctp->route_policy == ROUTE_BRIDGE ||
-	    bus_owner == true) {
+	if (mctp->route_policy == ROUTE_BRIDGE || bus_owner == true) {
 		response->eid_type |= (1 << 4);
 	}
 	/* TODO: support dynamic EID? */
