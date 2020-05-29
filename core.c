@@ -717,7 +717,7 @@ bool mctp_encode_ctrl_cmd_get_ver_support(
 }
 
 bool mctp_encode_ctrl_cmd_get_msg_type_support(
-	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
+	struct mctp_ctrl_cmd_get_msg_type_support *msg_type_support_cmd,
 	uint8_t rq_dgram_inst)
 {
 	if (!msg_type_support_cmd)

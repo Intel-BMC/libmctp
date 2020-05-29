@@ -54,7 +54,7 @@ struct mctp_ctrl_cmd_get_mctp_ver_support {
 	uint8_t msg_type_number;
 } __attribute__((__packed__));
 
-struct mctp_ctrl_get_msg_type_support {
+struct mctp_ctrl_cmd_get_msg_type_support {
 	struct mctp_ctrl_hdr ctrl_msg_hdr;
 } __attribute__((__packed__));
 
@@ -172,7 +172,7 @@ bool mctp_encode_ctrl_cmd_get_ver_support(
 	uint8_t rq_dgram_inst, uint8_t msg_type_number);
 
 bool mctp_encode_ctrl_cmd_get_msg_type_support(
-	struct mctp_ctrl_get_msg_type_support *msg_type_support_cmd,
+	struct mctp_ctrl_cmd_get_msg_type_support *msg_type_support_cmd,
 	uint8_t rq_dgram_inst);
 
 bool mctp_encode_ctrl_cmd_get_vdm_support(

@@ -46,5 +46,5 @@ target_link_libraries (test_smbus mctp_intel)
 add_test (NAME smbus COMMAND test_smbus)
 
 install (TARGETS mctp_intel DESTINATION lib)
-install (FILES libmctp.h libmctp-smbus.h DESTINATION include)
+install (FILES libmctp.h libmctp-smbus.h libmctp-cmds.h DESTINATION include)
 
