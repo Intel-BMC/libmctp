@@ -39,6 +39,8 @@ struct mctp_hdr {
 #define MCTP_BTU 64
 #define MCTP_PACKET_SIZE(unit) ((unit) + sizeof(struct mctp_hdr))
 
+#define TX_DISABLED_ERR (-1024)
+
 struct mctp_binding;
 /* packet buffers */
 
