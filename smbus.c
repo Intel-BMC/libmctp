@@ -32,13 +32,19 @@
 
 #define MCTP_COMMAND_CODE 0x0F
 #define MCTP_SLAVE_ADDR_INDEX 0
-#define MCTP_SOURCE_SLAVE_ADDRESS 0x21
+#define MCTP_SOURCE_SLAVE_ADDRESS 0x11
 
 #define SMBUS_COMMAND_CODE_SIZE 1
 #define SMBUS_LENGTH_FIELD_SIZE 1
 #define SMBUS_ADDR_OFFSET_SLAVE 0x1000
 
-struct mctp_smbus_header {
+struct mctp_smbus_header_tx {
+	uint8_t command_code;
+	uint8_t byte_count;
+	uint8_t source_slave_address;
+};
+
+struct mctp_smbus_header_rx {
 	uint8_t destination_slave_address;
 	uint8_t command_code;
 	uint8_t byte_count;
@@ -61,26 +67,26 @@ static uint8_t crc8_calculate(uint16_t d)
 }
 
 /* Incremental CRC8 over count bytes in the array pointed to by p */
-static uint8_t pec_calculate(uint8_t *p, size_t count)
+static uint8_t pec_calculate(uint8_t crc, uint8_t *p, size_t count)
 {
 	int i;
-	uint8_t crc = 0;
+
 	for (i = 0; i < count; i++) {
 		crc = crc8_calculate((crc ^ p[i]) << 8);
 	}
 	return crc;
 }
 
-static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint16_t flags)
+static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint8_t address)
 {
-	buf[MCTP_SLAVE_ADDR_INDEX] =
-		(buf[MCTP_SLAVE_ADDR_INDEX] << 1) | (flags & I2C_M_RD ? 1 : 0);
-	uint8_t pec = pec_calculate(buf, len);
+	uint8_t pec = pec_calculate(0, &address, 1);
+	pec = pec_calculate(pec, buf, len);
 
 	return pec;
 }
 
-static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, uint8_t len)
+static int mctp_smbus_tx(const uint8_t destSlaveAddr,
+			 struct mctp_binding_smbus *smbus, uint8_t len)
 {
 #ifdef I2C_M_HOLD
 	/* Hold message */
@@ -89,10 +95,10 @@ static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, uint8_t len)
 #else // !I2C_M_HOLD
 	struct i2c_msg msg[1] =
 #endif // I2C_M_HOLD
-		{ { .addr = smbus->txbuf[0] >> 1, // seven bit address
+		{ { .addr = destSlaveAddr >> 1, // seven bit address
 		    .flags = 0,
 		    .len = len,
-		    .buf = (uint8_t *)smbus->txbuf }
+		    .buf = smbus->txbuf }
 #ifdef I2C_M_HOLD
 		  ,
 		  { .addr = 0,
@@ -107,7 +113,6 @@ static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, uint8_t len)
 #else // !I2C_M_HOLD
 	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 1 };
 #endif // I2C_M_HOLD
-
 	return ioctl(smbus->out_fd, I2C_RDWR, &msgrdwr);
 }
 
@@ -136,29 +141,29 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 				 struct mctp_pktbuf *pkt)
 {
 	struct mctp_binding_smbus *smbus = binding_to_smbus(b);
-	struct mctp_smbus_header *smbus_hdr = (void *)smbus->txbuf;
-	struct mctp_hdr *hdr = (void *)(smbus->txbuf + sizeof(*smbus_hdr));
+	struct mctp_smbus_header_tx *smbus_hdr_tx = (void *)smbus->txbuf;
+	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
 	uint8_t destSlaveAddr = 0;
 
+	//TODO: Deprecate callback mechanism and handle message binding pvt
 	// get destination slave addr using destination eid(hdr->sest)
 	if (!getSlaveAddrCallback ||
-	    getSlaveAddrCallback(hdr->dest, &destSlaveAddr) < 0) {
+	    getSlaveAddrCallback(mctp_hdr->dest, &destSlaveAddr) < 0) {
 		mctp_prerr(
-			"get save address callbcack not set or error in getting "
+			"get slave address callbcack not set or error in getting "
 			"destination slave address");
 		return -1;
 	}
 
-	smbus_hdr->destination_slave_address = destSlaveAddr;
-	smbus_hdr->command_code = MCTP_COMMAND_CODE;
+	smbus_hdr_tx->command_code = MCTP_COMMAND_CODE;
 
 	/* the length field in the header excludes smbus framing
      * and escape sequences */
 	size_t pkt_length = mctp_pktbuf_size(pkt);
-	smbus_hdr->byte_count = pkt_length + sizeof(*smbus_hdr);
-	smbus_hdr->source_slave_address = MCTP_SOURCE_SLAVE_ADDRESS;
+	smbus_hdr_tx->byte_count = pkt_length + 1;
+	smbus_hdr_tx->source_slave_address = MCTP_SOURCE_SLAVE_ADDRESS;
 
-	size_t txBufLen = sizeof(*smbus_hdr);
+	size_t txBufLen = sizeof(*smbus_hdr_tx);
 	uint8_t i2c_message_len = txBufLen + pkt_length + SMBUS_PEC_BYTE_SIZE;
 	if (i2c_message_len > sizeof(smbus->txbuf)) {
 		mctp_prerr(
@@ -169,9 +174,10 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	memcpy(smbus->txbuf + txBufLen, &pkt->data[pkt->start], pkt_length);
 	txBufLen += pkt_length;
 
-	smbus->txbuf[txBufLen] = calculate_pec_byte(smbus->txbuf, txBufLen, 0);
+	smbus->txbuf[txBufLen] =
+		calculate_pec_byte(smbus->txbuf, txBufLen, destSlaveAddr);
 
-	if (mctp_smbus_tx(smbus, i2c_message_len - sizeof(*smbus_hdr))) {
+	if (mctp_smbus_tx(destSlaveAddr, smbus, i2c_message_len) < 0) {
 		mctp_prerr("can't tx smbus message");
 		return -1;
 	}
@@ -183,7 +189,7 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 {
 	ssize_t len = 0;
-	struct mctp_smbus_header *smbus_hdr;
+	struct mctp_smbus_header_rx *smbus_hdr_rx;
 
 	int ret = lseek(smbus->in_fd, 0, SEEK_SET);
 	if (ret < 0) {
@@ -192,7 +198,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	}
 
 	len = read(smbus->in_fd, smbus->rxbuf, sizeof(smbus->rxbuf));
-	if (len < sizeof(*smbus_hdr)) {
+	if (len < sizeof(*smbus_hdr_rx)) {
 		// This condition hits from from time to time, even with
 		// a properly written poll loop, although it's not clear
 		// why. Return an error so that the upper layer can
@@ -200,23 +206,27 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		return 0;
 	}
 
-	smbus_hdr = (void *)smbus->rxbuf;
-	if (smbus_hdr->destination_slave_address !=
+	smbus_hdr_rx = (void *)smbus->rxbuf;
+
+	if (smbus_hdr_rx->destination_slave_address !=
 	    (MCTP_SOURCE_SLAVE_ADDRESS & ~1)) {
 		mctp_prerr("Got bad slave address %d",
-			   smbus_hdr->destination_slave_address);
+			   smbus_hdr_rx->destination_slave_address);
 		return 0;
 	}
-	if (smbus_hdr->command_code != MCTP_COMMAND_CODE) {
-		mctp_prerr("Got bad command code %d", smbus_hdr->command_code);
+
+	if (smbus_hdr_rx->command_code != MCTP_COMMAND_CODE) {
+		mctp_prerr("Got bad command code %d",
+			   smbus_hdr_rx->command_code);
 		// Not a payload intended for us
 		return 0;
 	}
 
-	if (smbus_hdr->byte_count != (len - sizeof(*smbus_hdr))) {
+	if (smbus_hdr_rx->byte_count != (len - sizeof(*smbus_hdr_rx))) {
 		// Got an incorrectly sized payload
 		mctp_prerr("Got smbus payload sized %d, expecting %d",
-			   smbus_hdr->byte_count, len - sizeof(*smbus_hdr));
+			   smbus_hdr_rx->byte_count,
+			   len - sizeof(*smbus_hdr_rx));
 		return 0;
 	}
 
@@ -228,9 +238,9 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	smbus->rx_pkt = mctp_pktbuf_alloc(&(smbus->binding), 0);
 	assert(smbus->rx_pkt);
 
-	if (mctp_pktbuf_push(smbus->rx_pkt, &smbus->rxbuf[sizeof(*smbus_hdr)],
-			     len - sizeof(*smbus_hdr) - SMBUS_PEC_BYTE_SIZE) !=
-	    0) {
+	if (mctp_pktbuf_push(
+		    smbus->rx_pkt, &smbus->rxbuf[sizeof(*smbus_hdr_rx)],
+		    len - sizeof(*smbus_hdr_rx) - SMBUS_PEC_BYTE_SIZE) != 0) {
 		mctp_prerr("Can't push tok pktbuf: %m");
 		return -1;
 	}
