@@ -247,7 +247,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 
 	mctp_bus_rx(&(smbus->binding), smbus->rx_pkt);
 
-	mctp_pktbuf_free(smbus->rx_pkt);
 	smbus->rx_pkt = NULL;
 
 #ifdef I2C_M_HOLD
