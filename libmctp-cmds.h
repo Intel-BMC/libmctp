@@ -129,7 +129,7 @@ typedef union {
 } guid_t;
 
 struct mctp_ctrl_resp_get_eid {
-	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	struct mctp_ctrl_hdr ctrl_hdr;
 	uint8_t completion_code;
 	mctp_eid_t eid;
 	uint8_t eid_type;
@@ -138,13 +138,13 @@ struct mctp_ctrl_resp_get_eid {
 } __attribute__((__packed__));
 
 struct mctp_ctrl_resp_get_uuid {
-	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	struct mctp_ctrl_hdr ctrl_hdr;
 	uint8_t completion_code;
 	guid_t uuid;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_resp_set_eid {
-	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	struct mctp_ctrl_hdr ctrl_hdr;
 	uint8_t completion_code;
 	uint8_t status;
 	mctp_eid_t eid_set;
