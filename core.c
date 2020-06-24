@@ -343,6 +343,27 @@ int mctp_bridge_busses(struct mctp *mctp, struct mctp_binding *b1,
 	return 0;
 }
 
+static inline bool mctp_is_mctp_ctrl_message(void *buf, size_t len)
+{
+	assert(buf != NULL);
+
+	/* Length check will help to identify the packet which is not control
+	 * control command but initilized to zero*/
+	return len >= sizeof(struct mctp_ctrl_msg_hdr) &&
+	       *(uint8_t *)buf == MCTP_CTRL_HDR_MSG_TYPE;
+}
+
+static inline bool mctp_ctrl_msg_is_request(void *buf, size_t len)
+{
+	assert(buf != NULL);
+	assert(len >= sizeof(struct mctp_ctrl_msg_hdr));
+
+	struct mctp_ctrl_msg_hdr *hdr = buf;
+
+	return hdr->ic_msg_type == MCTP_CTRL_HDR_MSG_TYPE &&
+	       hdr->rq_dgram_inst & MCTP_CTRL_HDR_FLAG_REQUEST;
+}
+
 static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 		    mctp_eid_t dest, void *buf, size_t len,
 		    void *msg_binding_private)
@@ -356,19 +377,18 @@ static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 		 * Identify if this is a control request message.
 		 * See DSP0236 v1.3.0 sec. 11.5.
 		 */
-		struct mctp_ctrl_msg_hdr *msg_hdr = buf;
-		if ((msg_hdr != NULL) &&
-		    (len >= sizeof(struct mctp_ctrl_msg_hdr)) &&
-		    (msg_hdr->ic_msg_type == MCTP_CTRL_HDR_MSG_TYPE) &&
-		    (msg_hdr->rq_dgram_inst & MCTP_CTRL_HDR_FLAG_REQUEST)) {
-			/*
+		if (mctp_is_mctp_ctrl_message(buf, len)) {
+			if (mctp_ctrl_msg_is_request(buf, len)) {
+				/*
 			 * mctp_ctrl_handle_msg returning true means that the message
 			 * was handled by the control callbacks. There is no need to
 			 * handle it in the default callback.
 			 */
-			if (mctp_ctrl_handle_msg(mctp, bus, src, dest, buf, len,
-						 msg_binding_private))
-				return;
+				if (mctp_ctrl_handle_msg(mctp, bus, src, dest,
+							 buf, len,
+							 msg_binding_private))
+					return;
+			}
 		}
 		if (mctp->message_rx)
 			mctp->message_rx(src, mctp->message_rx_data, buf, len,
@@ -870,4 +890,14 @@ int mctp_ctrl_cmd_get_endpoint_uuid(struct mctp *mctp,
 void mctp_set_uuid(struct mctp *mctp, guid_t uuid)
 {
 	mctp->uuid = uuid;
+}
+
+bool mctp_is_mctp_ctrl_msg(void *buf, size_t len)
+{
+	return mctp_is_mctp_ctrl_message(buf, len);
+}
+
+bool mctp_ctrl_msg_is_req(void *buf, size_t len)
+{
+	return mctp_ctrl_msg_is_request(buf, len);
 }

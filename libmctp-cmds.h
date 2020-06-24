@@ -173,6 +173,10 @@ bool mctp_encode_ctrl_cmd_get_vdm_support(
 
 void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 
+bool mctp_is_mctp_ctrl_msg(void *buf, size_t len);
+
+bool mctp_ctrl_msg_is_req(void *buf, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
