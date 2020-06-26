@@ -23,7 +23,8 @@ void control_message_callback(mctp_eid_t src, void *data, void *buf, size_t len,
 	struct mctp_ctrl_msg_hdr *msg_hdr = buf;
 	printf("Control message received - command code: 0x%x\n",
 	       msg_hdr->command_code);
-	assert(msg_hdr->command_code == MCTP_CTRL_CMD_GET_ENDPOINT_ID);
+	assert(msg_hdr->command_code == MCTP_CTRL_CMD_GET_ENDPOINT_ID ||
+	       msg_hdr->command_code == MCTP_CTRL_CMD_RESERVED);
 	(*(uint8_t *)data)++;
 }
 

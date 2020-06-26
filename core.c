@@ -639,21 +639,6 @@ static inline bool mctp_ctrl_cmd_is_transport(struct mctp_ctrl_msg_hdr *hdr)
 		(hdr->command_code <= MCTP_CTRL_CMD_LAST_TRANSPORT));
 }
 
-static void mctp_ctrl_send_empty_response(struct mctp *mctp, mctp_eid_t src,
-					  uint8_t command_code,
-					  uint8_t response_code,
-					  void *msg_binding_private)
-{
-	struct mctp_ctrl_msg_hdr response_data;
-
-	memset(&response_data, 0, sizeof(response_data));
-	response_data.command_code = command_code;
-	response_data.completion_code = response_code;
-	response_data.ic_msg_type = MCTP_CTRL_HDR_MSG_TYPE;
-	mctp_message_tx(mctp, src, &response_data, sizeof(response_data),
-			msg_binding_private);
-}
-
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length, void *msg_binding_private)
@@ -662,19 +647,9 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 	/* Control message is received.
 	 * If dedicated control messages handler is provided, it will be used.
 	 * If there is no dedicated handler, this function returns false and data
-	 * can be handled by the generic message handler. There are two control
-	 * messages handlers available. First one is located in struct mctp and
-	 * handles command codes from 0x01 to 0x14 and the second one is a part
-	 * of struct mctp_binding, as 0xF0 - 0xFF command codes are transport
-	 * specific. */
-	if (mctp_ctrl_cmd_is_control(msg_hdr)) {
-		if (mctp->control_rx != NULL) {
-			/* MCTP endpoint handler */
-			mctp->control_rx(src, mctp->control_rx_data, buffer,
-					 length, msg_binding_private);
-			return true;
-		}
-	} else if (mctp_ctrl_cmd_is_transport(msg_hdr)) {
+	 * can be handled by the generic message handler. If the control command
+	 * is not transport specific it will be handled by registered callback. */
+	if (mctp_ctrl_cmd_is_transport(msg_hdr)) {
 		if (bus->binding->control_rx != NULL) {
 			/* MCTP bus binding handler */
 			bus->binding->control_rx(src,
@@ -684,14 +659,12 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			return true;
 		}
 	} else {
-		/* Unrecognized command code. */
-		/* TODO: move to service when possible, as library shall remain
-		   simple tool to handle rx/tx flow without extended logic */
-		mctp_ctrl_send_empty_response(
-			mctp, src, msg_hdr->command_code,
-			MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD,
-			msg_binding_private);
-		return true;
+		if (mctp->control_rx != NULL) {
+			/* MCTP endpoint handler */
+			mctp->control_rx(src, mctp->control_rx_data, buffer,
+					 length, msg_binding_private);
+			return true;
+		}
 	}
 	/*
 	 * Command was not handled, due to lack of specific callback.
