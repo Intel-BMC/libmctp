@@ -16,6 +16,12 @@ extern "C" {
 #define SMBUS_TX_BUFF_SIZE                                                     \
 	((MCTP_HEADER_SIZE) + (SMBUS_HEADER_SIZE) + (MCTP_PAYLOAD_SIZE) +      \
 	 (SMBUS_PEC_BYTE_SIZE))
+
+#define IS_MUX_PORT 0x80
+#define PULL_MODEL_HOLD 0x40
+#define CLOSE_AFTER_RESPONSE 0x20
+#define CLOSE_IMMEDIATE 0x10
+
 struct mctp_binding_smbus {
 	struct mctp_binding binding;
 	int out_fd;
@@ -30,6 +36,13 @@ struct mctp_binding_smbus {
 	/* temporary transmit buffer */
 	uint8_t txbuf[SMBUS_TX_BUFF_SIZE];
 };
+
+struct mctp_smbus_extra_params {
+	int fd;
+	uint32_t muxHoldTimeOut;
+	uint8_t muxFlags;
+	uint8_t slave_addr;
+} __attribute__((packed));
 
 struct mctp_binding_smbus *mctp_smbus_init(void);
 void mctp_smbus_register_bus(struct mctp_binding_smbus *smbus,

@@ -86,8 +86,10 @@ static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint8_t address)
 }
 
 static int mctp_smbus_tx(const uint8_t destSlaveAddr,
-			 struct mctp_binding_smbus *smbus, uint8_t len)
+			 struct mctp_binding_smbus *smbus, uint8_t len,
+			 uint8_t muxFlags)
 {
+	//TODO: Handle mux flags after depracating callback mechanism
 #ifdef I2C_M_HOLD
 	/* Hold message */
 	uint16_t holdtimeout = 1000; // timeout in ms.
@@ -143,16 +145,27 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	struct mctp_binding_smbus *smbus = binding_to_smbus(b);
 	struct mctp_smbus_header_tx *smbus_hdr_tx = (void *)smbus->txbuf;
 	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
-	uint8_t destSlaveAddr = 0;
+	struct mctp_smbus_extra_params *pvt_data =
+		(struct mctp_smbus_extra_params *)pkt->msg_binding_private;
 
-	//TODO: Deprecate callback mechanism and handle message binding pvt
-	// get destination slave addr using destination eid(hdr->sest)
+	uint8_t destSlaveAddr = 0;
+	uint8_t muxFlags = 0;
+
+	//TODO: Deprecate callback mechanism
 	if (!getSlaveAddrCallback ||
 	    getSlaveAddrCallback(mctp_hdr->dest, &destSlaveAddr) < 0) {
 		mctp_prerr(
 			"get slave address callbcack not set or error in getting "
 			"destination slave address");
 		return -1;
+	}
+	/*If message binding private values are set, override the existing
+         * binding params with the one provided in message binding private*/
+
+	if (pvt_data) {
+		mctp_smbus_set_out_fd(smbus, pvt_data->fd);
+		destSlaveAddr = pvt_data->slave_addr;
+		muxFlags = pvt_data->muxFlags;
 	}
 
 	smbus_hdr_tx->command_code = MCTP_COMMAND_CODE;
@@ -177,8 +190,9 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	smbus->txbuf[txBufLen] =
 		calculate_pec_byte(smbus->txbuf, txBufLen, destSlaveAddr);
 
-	if (mctp_smbus_tx(destSlaveAddr, smbus, i2c_message_len) < 0) {
-		mctp_prerr("can't tx smbus message");
+	if (mctp_smbus_tx(destSlaveAddr, smbus, i2c_message_len, muxFlags) <
+	    0) {
+		mctp_prerr("Error in tx of smbus message");
 		return -1;
 	}
 
@@ -244,6 +258,13 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		mctp_prerr("Can't push tok pktbuf: %m");
 		return -1;
 	}
+
+	struct mctp_smbus_extra_params pvt_data;
+	memset(&pvt_data, 0, sizeof(struct mctp_smbus_extra_params));
+
+	pvt_data.slave_addr = (smbus_hdr_rx->source_slave_address & ~1);
+
+	smbus->rx_pkt->msg_binding_private = &pvt_data;
 
 	mctp_bus_rx(&(smbus->binding), smbus->rx_pkt);
 
