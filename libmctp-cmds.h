@@ -17,14 +17,6 @@ struct mctp_ctrl_msg_hdr {
 	uint8_t ic_msg_type;
 	uint8_t rq_dgram_inst;
 	uint8_t command_code;
-	uint8_t completion_code;
-};
-
-/*TODO: Need to combine this structure with the above one.*/
-struct mctp_ctrl_hdr {
-	uint8_t ic_msg_type;
-	uint8_t rq_dgram_inst;
-	uint8_t command_code;
 } __attribute__((__packed__));
 
 typedef enum {
@@ -35,31 +27,31 @@ typedef enum {
 } mctp_ctrl_cmd_set_eid_op;
 
 struct mctp_ctrl_cmd_set_eid {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 	mctp_ctrl_cmd_set_eid_op operation : 2;
 	uint8_t : 6;
 	uint8_t eid;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_cmd_get_eid {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_cmd_get_uuid {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_cmd_get_mctp_ver_support {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 	uint8_t msg_type_number;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_cmd_get_msg_type_support {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_cmd_get_vdm_support {
-	struct mctp_ctrl_hdr ctrl_msg_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 	uint8_t vendor_id_set_selector;
 } __attribute__((__packed__));
 
@@ -129,7 +121,7 @@ typedef union {
 } guid_t;
 
 struct mctp_ctrl_resp_get_eid {
-	struct mctp_ctrl_hdr ctrl_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
 	mctp_eid_t eid;
 	uint8_t eid_type;
@@ -138,13 +130,13 @@ struct mctp_ctrl_resp_get_eid {
 } __attribute__((__packed__));
 
 struct mctp_ctrl_resp_get_uuid {
-	struct mctp_ctrl_hdr ctrl_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
 	guid_t uuid;
 } __attribute__((__packed__));
 
 struct mctp_ctrl_resp_set_eid {
-	struct mctp_ctrl_hdr ctrl_hdr;
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
 	uint8_t status;
 	mctp_eid_t eid_set;

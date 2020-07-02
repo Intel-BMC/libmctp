@@ -17,6 +17,11 @@ struct msg_payload {
 	struct mctp_ctrl_msg_hdr ctl_hdr;
 };
 
+struct msg_response {
+	struct mctp_ctrl_msg_hdr ctl_hdr;
+	uint8_t completion_code;
+};
+
 void control_message_callback(mctp_eid_t src, void *data, void *buf, size_t len,
 			      void *prv)
 {
@@ -40,10 +45,10 @@ void control_message_transport_callback(mctp_eid_t src, void *data, void *buf,
 
 int mctp_test_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 {
-	struct mctp_ctrl_msg_hdr *msg_hdr = mctp_pktbuf_data(pkt);
+	struct msg_response *resp = mctp_pktbuf_data(pkt);
 	printf("Control message response sent from 0x%X: completion code 0x%X\n",
-	       mctp_pktbuf_hdr(pkt)->src, msg_hdr->completion_code);
-	assert(msg_hdr->completion_code == MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD);
+	       mctp_pktbuf_hdr(pkt)->src, resp->completion_code);
+	assert(resp->completion_code == MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD);
 	(*(uint8_t *)b->control_rx_data)++;
 	return 0;
 }
