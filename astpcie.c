@@ -22,12 +22,20 @@
 #undef pr_fmt
 #define pr_fmt(fmt) "astpcie: " fmt
 
-/*
- * Start function. Opens driver and stores file descriptor
- */
-static int mctp_binding_astpcie_start(struct mctp_binding *b)
+static int mctp_binding_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
 {
-	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
+	struct aspeed_mctp_get_bdf bdf;
+	int rc;
+
+	rc = ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_GET_BDF, &bdf);
+	if (!rc)
+		astpcie->bdf = bdf.bdf;
+
+	return rc;
+}
+
+static int mctp_binding_astpcie_open(struct mctp_binding_astpcie *astpcie)
+{
 	int fd = open(AST_DRV_FILE, O_RDWR);
 
 	if (fd < 0) {
@@ -38,6 +46,23 @@ static int mctp_binding_astpcie_start(struct mctp_binding *b)
 
 	astpcie->fd = fd;
 	return 0;
+}
+
+/*
+ * Start function. Opens driver and read bdf
+ */
+static int mctp_binding_astpcie_start(struct mctp_binding *b)
+{
+	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
+	int rc;
+
+	assert(astpcie);
+
+	rc = mctp_binding_astpcie_open(astpcie);
+	if (!rc)
+		rc = mctp_binding_astpcie_get_bdf(astpcie);
+
+	return rc;
 }
 
 /*

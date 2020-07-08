@@ -11,6 +11,7 @@
 
 struct mctp_binding_astpcie {
 	struct mctp_binding binding;
+	uint16_t bdf;
 	int fd;
 };
 
