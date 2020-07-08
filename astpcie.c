@@ -9,21 +9,14 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <linux/aspeed-mctp.h>
 
 #include "container_of.h"
 #include "libmctp-alloc.h"
 #include "libmctp-astpcie.h"
 #include "libmctp-log.h"
-#include "libmctp.h"
-
 #include "astpcie.h"
 
 #undef pr_fmt
@@ -32,21 +25,18 @@
 /*
  * Start function. Opens driver and stores file descriptor
  */
-static int mctp_binding_astpcie_start(struct mctp_binding *binding)
+static int mctp_binding_astpcie_start(struct mctp_binding *b)
 {
-	struct mctp_binding_astpcie *pcie = binding_to_astpcie(binding);
-	int fd = open(AST_DRV_FILE, O_RDWR, O_EXCL);
+	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
+	int fd = open(AST_DRV_FILE, O_RDWR);
 
 	if (fd < 0) {
-		mctp_prerr(AST_DRV_FILE
-			   "/ast_mctp device open error: reason = %d",
-			   errno);
+		mctp_prerr("Cannot open: %s, errno = %d", AST_DRV_FILE, errno);
 
 		return fd;
 	}
 
-	// store file descriptor for further use
-	pcie->fd = fd;
+	astpcie->fd = fd;
 	return 0;
 }
 
@@ -103,7 +93,7 @@ static int mctp_astpcie_medium_specific_initialize(struct mctp_pktbuf *pkt)
  */
 static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
 {
-	struct pcie_request_extra *extra = pkt->msg_binding_private;
+	struct pcie_pkt_private *pkt_prv = pkt->msg_binding_private;
 	struct pcie_header *header = (struct pcie_header *)pkt->data;
 
 	/* initialize header, extend length with padding */
@@ -114,22 +104,22 @@ static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
 		return -1;
 
 	/* use defaults */
-	if (!extra)
+	if (!pkt_prv)
 		return 0;
 
-	if (extra->routing < PCIE_ROUTE_TO_ROOT_COMPLEX ||
-	    extra->routing == PCIE_RESERVED ||
-	    extra->routing > PCIE_BROADCAST_FROM_ROOT)
+	if (pkt_prv->routing < PCIE_ROUTE_TO_RC ||
+	    pkt_prv->routing == PCIE_RESERVED ||
+	    pkt_prv->routing > PCIE_BROADCAST_FROM_RC)
 		return -1;
 
 	header->r_fmt_type_rout |=
-		(uint8_t)(extra->routing << PCIE_FTR_TYPE_SHIFT);
+		(uint8_t)(pkt_prv->routing << PCIE_FTR_TYPE_SHIFT);
 
-	memcpy(&header->pci_target_id, &extra->remote_id,
-	       sizeof(extra->remote_id));
+	memcpy(&header->pci_target_id, &pkt_prv->remote_id,
+	       sizeof(pkt_prv->remote_id));
 
-	memcpy(&header->pci_requester_id, &extra->local_id,
-	       sizeof(extra->local_id));
+	memcpy(&header->pci_requester_id, &pkt_prv->local_id,
+	       sizeof(pkt_prv->local_id));
 
 	return 0;
 }
@@ -180,19 +170,18 @@ static int mctp_binding_astpcie_tx(struct mctp_binding *binding,
 /*
  * Simple poll implementation for use
  */
-int mctp_binding_astpcie_poll(struct mctp_binding *binding, int timeout)
+int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 {
-	struct mctp_binding_astpcie *pcie = binding_to_astpcie(binding);
 	struct pollfd fds[1];
 	int res;
 
-	fds[0].fd = pcie->fd;
+	fds[0].fd = astpcie->fd;
 	fds[0].events = POLLIN | POLLOUT;
 
 	res = poll(fds, 1, timeout);
 
 	if (res > 0)
-		return fds[0].events;
+		return fds[0].revents;
 
 	if (res < 0) {
 		mctp_prerr("Poll returned error status (errno=%d)", errno);
@@ -213,7 +202,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	struct mctp_binding_astpcie *pcie = binding_to_astpcie(binding);
 	struct mctp_pktbuf *pkt;
 	struct pcie_header *header;
-	struct pcie_request_extra extra;
+	struct pcie_pkt_private pkt_prv;
 	uint8_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
 	ssize_t data_len;
 	ssize_t data_read;
@@ -251,10 +240,11 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 		     data_len - sizeof(struct mctp_hdr),
 		     header->td_ep_attr_r_l1, header->len2);
 
-	memcpy(&extra.remote_id, &header->pci_requester_id,
-	       sizeof(extra.remote_id));
-	memcpy(&extra.local_id, &header->pci_target_id, sizeof(extra.local_id));
-	extra.routing = header->r_fmt_type_rout & PCIE_FTR_ROUTING_MASK;
+	memcpy(&pkt_prv.remote_id, &header->pci_requester_id,
+	       sizeof(pkt_prv.remote_id));
+	memcpy(&pkt_prv.local_id, &header->pci_target_id,
+	       sizeof(pkt_prv.local_id));
+	pkt_prv.routing = header->r_fmt_type_rout & PCIE_FTR_ROUTING_MASK;
 
 	pkt = mctp_pktbuf_alloc(binding, 0);
 	if (!pkt) {
@@ -277,7 +267,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	mctp_prdebug("dest: %x, src: %x", (mctp_pktbuf_hdr(pkt))->dest,
 		     (mctp_pktbuf_hdr(pkt))->src);
 
-	pkt->msg_binding_private = &extra;
+	pkt->msg_binding_private = &pkt_prv;
 
 	mctp_bus_rx(binding, pkt);
 
@@ -289,18 +279,19 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
  */
 struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 {
-	struct mctp_binding_astpcie *pcie = __mctp_alloc(sizeof(*pcie));
+	struct mctp_binding_astpcie *astpcie;
 
-	if (!pcie)
+	astpcie = __mctp_alloc(sizeof(*astpcie));
+	if (!astpcie)
 		return NULL;
 
-	memset(pcie, 0, sizeof(*pcie));
+	memset(astpcie, 0, sizeof(*astpcie));
 
-	pcie->binding.name = "astpcie";
-	pcie->binding.version = 1;
-	pcie->binding.tx = mctp_binding_astpcie_tx;
-	pcie->binding.start = mctp_binding_astpcie_start;
-	pcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
+	astpcie->binding.name = "astpcie";
+	astpcie->binding.version = 1;
+	astpcie->binding.tx = mctp_binding_astpcie_tx;
+	astpcie->binding.start = mctp_binding_astpcie_start;
+	astpcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
 
 	/* where mctp_hdr starts in in/out comming data
 	 * note: there are two approaches: first (used here) that core
@@ -308,9 +299,9 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 	 * other way by only by binding.
 	 * This might change as smbus binding implements support for medium
 	 * specific layer */
-	pcie->binding.pkt_pad = sizeof(struct pcie_header);
+	astpcie->binding.pkt_pad = sizeof(struct pcie_header);
 
-	return pcie;
+	return astpcie;
 }
 
 /*
@@ -325,7 +316,8 @@ void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b)
 /*
  * Returns generic binder handler from PCIe binding handler
  */
-struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b)
+struct mctp_binding *
+mctp_binding_astpcie_core(struct mctp_binding_astpcie *astpcie)
 {
-	return &b->binding;
+	return &astpcie->binding;
 }

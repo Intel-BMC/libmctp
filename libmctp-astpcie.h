@@ -25,7 +25,8 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void);
 
 struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b);
 
-int mctp_binding_astpcie_poll(struct mctp_binding *binding, int timeout);
+int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie,
+			      int timeout);
 
 int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 			    void *payload, size_t payload_size);
@@ -36,16 +37,16 @@ void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b);
  * Routing types
  */
 enum pcie_message_routing {
-	PCIE_ROUTE_TO_ROOT_COMPLEX = 0,
+	PCIE_ROUTE_TO_RC = 0,
 	PCIE_RESERVED = 1,
 	PCIE_ROUTE_BY_ID = 2,
-	PCIE_BROADCAST_FROM_ROOT = 3
+	PCIE_BROADCAST_FROM_RC = 3
 };
 
 /*
  * Extended data for transport layer control
  */
-struct pcie_request_extra {
+struct pcie_pkt_private {
 	enum pcie_message_routing routing;
 	/* physical address of this endpoint */
 	uint16_t local_id;
