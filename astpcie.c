@@ -211,7 +211,6 @@ int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 
 	pkt_prv.routing = PCIE_GET_ROUTING(hdr);
 	pkt_prv.remote_id = PCIE_GET_REQ_ID(hdr);
-	pkt_prv.local_id = astpcie->bdf;
 
 	pkt = mctp_pktbuf_alloc(&astpcie->binding, 0);
 	if (!pkt) {

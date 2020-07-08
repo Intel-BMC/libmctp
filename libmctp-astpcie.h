@@ -47,8 +47,6 @@ enum pcie_message_routing {
  */
 struct pcie_pkt_private {
 	enum pcie_message_routing routing;
-	/* physical address of this endpoint */
-	uint16_t local_id;
 	/* source (rx)/target (tx) endpoint bdf */
 	uint16_t remote_id;
 };
