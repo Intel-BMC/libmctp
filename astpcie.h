@@ -22,17 +22,43 @@ struct mctp_binding_astpcie {
 /* driver device file */
 #define AST_DRV_FILE "/dev/aspeed-mctp"
 
-/* defaults for PCIe VDM medium specific header */
-#define PCIE_HEADER_FMT (0x3)
-#define PCIE_HEADER_TYPE (0x0)
-#define PCIE_HEADER_ROUTING (0x0)
-#define PCIE_HEADER_TC (0x0)
-#define PCIE_HEADER_ATTR (0x1)
-#define PCIE_HEADER_TD (0)
-#define PCIE_HEADER_EP (0)
-#define PCIE_HEADER_MCTP_VDM_CODE (0x0)
-#define PCIE_HEADER_MESSAGE_CODE (0x7f)
-#define PCIE_HEADER_VENDOR_ID (0x1ab4)
+struct mctp_pcie_hdr {
+	uint8_t fmt_type;
+	uint8_t mbz;
+	uint16_t mbz_attr_length;
+	uint16_t requester;
+	uint8_t tag;
+	uint8_t code;
+	uint16_t target;
+	uint16_t vendor;
+} __attribute__((packed));
+
+/*
+ * MCTP PCIe template values
+ * The following non-zero values are defined by DSP0238 DMTF Spec as constants:
+ * .fmt_type:
+ * ----------
+ * [4:0]: Type[4:3] = 10b to indicate a message.
+ * [6:5]: Fmt = 11b to indicate 4 dword header with data.
+ * ----------
+ * .mbz_attr_length:
+ * [5:4]: Attr[1:0] = 01b for all MCTP over PCIe VDM
+ * ----------
+ * .code
+ * ----------
+ * [7:0]: Message Code = 0111_1111b to indicate a Type 1 VDM
+ * ----------
+ * .vendor
+ * ----------
+ * byte2[7:0]: Vendor ID MSB = 0x1a - DMTF VDMs
+ * byte3[7:0]: Vendor ID LSB = 0xb4 - DMTF VDMs
+ *
+ * See more details in Table 1 of DSP0238 DMTF Spec.
+ */
+#define MSG_4DW_HDR 0x70
+#define MCTP_PCIE_VDM_ATTR 0x0010
+#define MSG_CODE_VDM_TYPE_1 0x7f
+#define VENDOR_ID_DMTF_VDM 0xb41a
 
 /*
  * Calculates offset of payload for whole PCIe VMD frame

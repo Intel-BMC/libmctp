@@ -22,6 +22,16 @@
 #undef pr_fmt
 #define pr_fmt(fmt) "astpcie: " fmt
 
+/*
+ * PCIe header template in "network format" - Big Endian
+ */
+static const struct mctp_pcie_hdr mctp_pcie_hdr_template_be = {
+	.fmt_type = MSG_4DW_HDR,
+	.mbz_attr_length = MCTP_PCIE_VDM_ATTR,
+	.code = MSG_CODE_VDM_TYPE_1,
+	.vendor = VENDOR_ID_DMTF_VDM
+};
+
 static int mctp_binding_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
 {
 	struct aspeed_mctp_get_bdf bdf;
@@ -66,26 +76,17 @@ static int mctp_binding_astpcie_start(struct mctp_binding *b)
 }
 
 /*
- * Initialize medium specific header with defaults
+ * Fill medium specific part of header
  */
-static int mctp_astpcie_medium_specific_initialize(struct mctp_pktbuf *pkt)
+static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
 {
+	struct pcie_pkt_private *pkt_prv = pkt->msg_binding_private;
 	struct pcie_header *header = (struct pcie_header *)pkt->data;
 	size_t len = mctp_pktbuf_end_index(pkt);
 	size_t dword_len;
 	size_t pad_len;
-	memset(header, 0, sizeof(*header));
 
-	header->r_fmt_type_rout =
-		(PCIE_HEADER_FMT << PCIE_FTR_FMT_SHIFT |
-		 PCIE_HEADER_TYPE << PCIE_FTR_TYPE_SHIFT |
-		 PCIE_HEADER_ROUTING << PCIE_FTR_ROUTING_SHIFT);
-
-	header->r_trcl_r = PCIE_HEADER_TC << PCIE_TR_TRCL_SHIFT;
-
-	header->td_ep_attr_r_l1 = (PCIE_HEADER_TD << PCIE_TEARL_SHIFT_TD |
-				   PCIE_HEADER_EP << PCIE_TEARL_SHIFT_EP |
-				   PCIE_HEADER_ATTR << PCIE_TEARL_ATTR_SHIFT);
+	memcpy(header, &mctp_pcie_hdr_template_be, sizeof(struct pcie_header));
 
 	/* calculate number of padding bytes to align to uint32_t */
 	pad_len = PCIE_COUNT_PAD(len);
@@ -96,38 +97,12 @@ static int mctp_astpcie_medium_specific_initialize(struct mctp_pktbuf *pkt)
 		(uint8_t)(UCHAR_MAX & (dword_len >> CHAR_BIT));
 	header->len2 = (uint8_t)(dword_len);
 
-	/* store padding together with VDM code */
-	header->pcitag =
-		(uint8_t)(PCIE_HEADER_MCTP_VDM_CODE << PCIE_PCITAG_MVC_SHIFT |
-			  pad_len << PCIE_PCITAG_PADLEN_SHIFT);
-	header->message_code = PCIE_HEADER_MESSAGE_CODE;
-	header->vendor_id = PCIE_HEADER_VENDOR_ID;
-
 	if (len + pad_len > MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER) {
 		mctp_prerr("incorrect payload size (actual: %zd > max: %d)",
 			   len + pad_len, MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER);
 
 		return -1;
 	}
-
-	return 0;
-}
-
-/*
- * Fill medium specific part of header
- */
-static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
-{
-	struct pcie_pkt_private *pkt_prv = pkt->msg_binding_private;
-	struct pcie_header *header = (struct pcie_header *)pkt->data;
-
-	/* initialize header, extend length with padding */
-	if (mctp_astpcie_medium_specific_initialize(pkt) < 0)
-		return -1;
-
-	if (!header)
-		return -1;
-
 	/* use defaults */
 	if (!pkt_prv)
 		return 0;
