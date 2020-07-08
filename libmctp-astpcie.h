@@ -33,18 +33,6 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b);
 
 /*
- * BDF representation in mctp o/PCIe VDM frame
- */
-struct bdf {
-	uint8_t bus;
-#define BDF_DEVICE_SHIFT (3)
-#define BDF_DEVICE_MASK (0x1F)
-#define BDF_FUNCTION_SHIFT (0)
-#define BDF_FUNCTION_MASK (0x7)
-	uint8_t dev_fun;
-} __attribute__((__packed__));
-
-/*
  * Routing types
  */
 enum pcie_message_routing {
@@ -60,9 +48,9 @@ enum pcie_message_routing {
 struct pcie_request_extra {
 	enum pcie_message_routing routing;
 	/* physical address of this endpoint */
-	struct bdf local_id;
+	uint16_t local_id;
 	/* source (rx)/target (tx) endpoint bdf */
-	struct bdf remote_id;
+	uint16_t remote_id;
 };
 
 #ifdef __cplusplus
