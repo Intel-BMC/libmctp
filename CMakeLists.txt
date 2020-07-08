@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.5 FATAL_ERROR)
 
+project (libmctp)
+
 add_definitions (-DMCTP_LOG_STDERR)
 add_definitions (-DMCTP_HAVE_FILEIO)
 add_definitions (-DMCTP_HAVE_STDIO)
