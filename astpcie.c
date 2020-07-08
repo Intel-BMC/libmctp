@@ -217,14 +217,8 @@ int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 	return 0;
 }
 
-/*
- * Function reads packet from driver and passes it to
- * mctp core handler.
- */
-int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
-			    void *payload, size_t payload_size)
+int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 {
-	struct mctp_binding_astpcie *pcie = binding_to_astpcie(binding);
 	struct mctp_pktbuf *pkt;
 	struct pcie_header *header;
 	struct pcie_pkt_private pkt_prv;
@@ -238,7 +232,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	return -1;
 #endif
 
-	data_read = read(pcie->fd, &data, sizeof(data));
+	data_read = read(astpcie->fd, &data, sizeof(data));
 	if (data_read < 0) {
 		mctp_prerr("Reading RX data failed (reason = %d)", errno);
 
@@ -271,7 +265,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	       sizeof(pkt_prv.local_id));
 	pkt_prv.routing = header->r_fmt_type_rout & PCIE_FTR_ROUTING_MASK;
 
-	pkt = mctp_pktbuf_alloc(binding, 0);
+	pkt = mctp_pktbuf_alloc(&astpcie->binding, 0);
 	if (!pkt) {
 		mctp_prerr("pktbuf allocation failed");
 
@@ -294,7 +288,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 
 	memcpy(pkt->msg_binding_private, &pkt_prv, sizeof(pkt_prv));
 
-	mctp_bus_rx(binding, pkt);
+	mctp_bus_rx(&astpcie->binding, pkt);
 
 	return 0;
 }

@@ -28,8 +28,7 @@ struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b);
 int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie,
 			      int timeout);
 
-int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
-			    void *payload, size_t payload_size);
+int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie);
 
 void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b);
 
