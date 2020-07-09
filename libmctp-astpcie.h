@@ -49,6 +49,19 @@ struct pcie_pkt_private {
 	enum pcie_message_routing routing;
 	/* source (rx)/target (tx) endpoint bdf */
 	uint16_t remote_id;
+
+#ifdef MCTP_ASTPCIE_RESPONSE_WA
+	/*
+	 * FIXME: In libmctp core there is no support for response, which means
+	 * that we are not able to send MCTP packet with TO bit = 0b and MsgTag
+	 * matching the request.
+	 * Temporarily, as a workaround, we will store flags_seq_tag of the
+	 * request's mctp_hdr in pcie_pkt_private to be able set both fields
+	 * correctly in response time.
+	 * Remove, when dedicated API for response is added.
+	 */
+	uint8_t flags_seq_tag;
+#endif
 };
 
 #ifdef __cplusplus

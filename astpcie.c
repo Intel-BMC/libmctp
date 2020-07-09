@@ -123,6 +123,11 @@ static int mctp_binding_astpcie_tx(struct mctp_binding *b,
 
 	memcpy(hdr, &mctp_pcie_hdr_template_be, sizeof(*hdr));
 
+#ifdef MCTP_ASTPCIE_RESPONSE_WA
+	if (!(pkt_prv->flags_seq_tag & MCTP_HDR_FLAG_TO))
+		mctp_hdr->flags_seq_tag = pkt_prv->flags_seq_tag;
+#endif
+
 	mctp_prdebug("TX, len: %d, pad: %d", payload_len_dw, pad);
 
 	PCIE_SET_ROUTING(hdr, pkt_prv->routing);
@@ -227,6 +232,10 @@ int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 		return -1;
 	}
 
+	mctp_hdr = mctp_pktbuf_hdr(pkt);
+#ifdef MCTP_ASTPCIE_RESPONSE_WA
+	pkt_prv.flags_seq_tag = mctp_hdr->flags_seq_tag;
+#endif
 	memcpy(pkt->msg_binding_private, &pkt_prv, sizeof(pkt_prv));
 
 	mctp_bus_rx(&astpcie->binding, pkt);
