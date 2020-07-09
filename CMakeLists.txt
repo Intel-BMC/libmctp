@@ -49,5 +49,8 @@ add_executable (test_binding_private tests/test_binding_private.c)
 target_link_libraries (test_binding_private mctp_intel)
 add_test (NAME binding_private COMMAND test_binding_private)
 
+add_executable (mctp_astpcie_discovery utils/mctp-astpcie-discovery.c)
+target_link_libraries (mctp_astpcie_discovery mctp_intel)
+
 install (TARGETS mctp_intel DESTINATION lib)
 install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
