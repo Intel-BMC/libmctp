@@ -163,18 +163,18 @@ static size_t mctp_astpcie_rx_get_payload_size(struct mctp_pcie_hdr *hdr)
 int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 {
 	struct pollfd fds[1];
-	int res;
+	int rc;
 
 	fds[0].fd = astpcie->fd;
 	fds[0].events = POLLIN | POLLOUT;
 
-	res = poll(fds, 1, timeout);
+	rc = poll(fds, 1, timeout);
 
-	if (res > 0)
+	if (rc > 0)
 		return fds[0].revents;
 
-	if (res < 0) {
-		mctp_prerr("Poll returned error status (errno=%d)", errno);
+	if (rc < 0) {
+		mctp_prwarn("Poll returned error status (errno=%d)", errno);
 
 		return -1;
 	}
