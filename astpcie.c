@@ -292,7 +292,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding *binding, mctp_eid_t dest,
 	mctp_prdebug("dest: %x, src: %x", (mctp_pktbuf_hdr(pkt))->dest,
 		     (mctp_pktbuf_hdr(pkt))->src);
 
-	pkt->msg_binding_private = &pkt_prv;
+	memcpy(pkt->msg_binding_private, &pkt_prv, sizeof(pkt_prv));
 
 	mctp_bus_rx(binding, pkt);
 
@@ -325,6 +325,7 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 	 * This might change as smbus binding implements support for medium
 	 * specific layer */
 	astpcie->binding.pkt_pad = sizeof(struct pcie_header);
+	astpcie->binding.pkt_priv_size = sizeof(struct pcie_header);
 
 	return astpcie;
 }

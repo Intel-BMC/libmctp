@@ -105,12 +105,21 @@ struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *binding, size_t len)
 	buf->mctp_hdr_off = buf->start;
 	buf->next = NULL;
 	buf->msg_binding_private = NULL;
+	if (binding->pkt_priv_size) {
+		buf->msg_binding_private = __mctp_alloc(binding->pkt_priv_size);
+		if (!buf->msg_binding_private) {
+			__mctp_free(buf);
+			return NULL;
+		}
+	}
 
 	return buf;
 }
 
 void mctp_pktbuf_free(struct mctp_pktbuf *pkt)
 {
+	if (pkt->msg_binding_private)
+		__mctp_free(pkt->msg_binding_private);
 	__mctp_free(pkt);
 }
 
@@ -561,6 +570,7 @@ static int mctp_send_tx_queue(struct mctp_bus *bus)
 			}
 		}
 		bus->tx_queue_head = pkt->next;
+
 		mctp_pktbuf_free(pkt);
 	}
 
@@ -602,10 +612,11 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 					payload_len + sizeof(*hdr));
 		hdr = mctp_pktbuf_hdr(pkt);
 
-		/* store binding specific private data;
-		   For EOM packet, free binding private data
-		*/
-		pkt->msg_binding_private = msg_binding_private;
+		/* store binding specific private data */
+		if (msg_binding_private)
+			memcpy(pkt->msg_binding_private, msg_binding_private,
+			       bus->binding->pkt_priv_size);
+
 		/* todo: tags */
 		hdr->ver = bus->binding->version & 0xf;
 		hdr->dest = dest;

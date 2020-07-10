@@ -264,7 +264,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 
 	pvt_data.slave_addr = (smbus_hdr_rx->source_slave_address & ~1);
 
-	smbus->rx_pkt->msg_binding_private = &pvt_data;
+	memcpy(smbus->rx_pkt->msg_binding_private, &pvt_data, sizeof(pvt_data));
 
 	mctp_bus_rx(&(smbus->binding), smbus->rx_pkt);
 
@@ -312,6 +312,7 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	smbus->binding.name = "smbus";
 	smbus->binding.version = 1;
 	smbus->binding.pkt_size = sizeof(smbus->rxbuf);
+	smbus->binding.pkt_priv_size = sizeof(struct mctp_smbus_extra_params);
 
 	smbus->binding.tx = mctp_binding_smbus_tx;
 	return smbus;

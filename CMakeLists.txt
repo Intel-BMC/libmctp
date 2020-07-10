@@ -43,5 +43,9 @@ add_executable (test_smbus tests/test_smbus.c)
 target_link_libraries (test_smbus mctp_intel)
 add_test (NAME smbus COMMAND test_smbus)
 
+add_executable (test_binding_private tests/test_binding_private.c)
+target_link_libraries (test_binding_private mctp_intel)
+add_test (NAME binding_private COMMAND test_binding_private)
+
 install (TARGETS mctp_intel DESTINATION lib)
 install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
