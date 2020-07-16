@@ -4,6 +4,8 @@
 #include "config.h"
 #endif
 
+#include <byteswap.h>
+#include <endian.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -76,95 +78,83 @@ static int mctp_binding_astpcie_start(struct mctp_binding *b)
 }
 
 /*
- * Fill medium specific part of header
+ * Structures in libmctp (i.e. struct mctp_hdr) are defined in "network format"
+ * (big endian), which means that we need to convert PCIe VDM header from LE
+ * (host) to BE and make sure that any operations on data types larger than
+ * one byte need to be done in BE (for set) or LE (for get).
+ *
+ * TODO: Remove if the kernel implementation is changed.
  */
-static int fill_medium_specific_header(struct mctp_pktbuf *pkt)
+static void mctp_astpcie_swap_pcie_vdm_hdr(uint32_t *data)
 {
-	struct pcie_pkt_private *pkt_prv = pkt->msg_binding_private;
-	struct pcie_header *header = (struct pcie_header *)pkt->data;
-	size_t len = mctp_pktbuf_end_index(pkt);
-	size_t dword_len;
-	size_t pad_len;
+	int i;
 
-	memcpy(header, &mctp_pcie_hdr_template_be, sizeof(struct pcie_header));
+	for (i = 0; i < PCIE_VDM_HDR_SIZE_DW; i++)
+		data[i] = bswap_32(data[i]);
+}
 
-	/* calculate number of padding bytes to align to uint32_t */
-	pad_len = PCIE_COUNT_PAD(len);
+static uint8_t mctp_astpcie_tx_get_pad_len(struct mctp_pktbuf *pkt)
+{
+	size_t sz = mctp_pktbuf_size(pkt);
 
-	/* Length of the PCIe VDM Data in dwords */
-	dword_len = (len + pad_len) / sizeof(uint32_t);
-	header->td_ep_attr_r_l1 |=
-		(uint8_t)(UCHAR_MAX & (dword_len >> CHAR_BIT));
-	header->len2 = (uint8_t)(dword_len);
+	return PCIE_PKT_ALIGN(sz) - sz;
+}
 
-	if (len + pad_len > MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER) {
-		mctp_prerr("incorrect payload size (actual: %zd > max: %d)",
-			   len + pad_len, MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER);
+static uint16_t mctp_astpcie_tx_get_payload_size_dw(struct mctp_pktbuf *pkt)
+{
+	size_t sz = mctp_pktbuf_size(pkt);
 
+	return PCIE_PKT_ALIGN(sz) / sizeof(uint32_t) - MCTP_HDR_SIZE_DW;
+}
+/*
+ * Tx function which writes single packet to device driver
+ */
+static int mctp_binding_astpcie_tx(struct mctp_binding *b,
+				   struct mctp_pktbuf *pkt)
+{
+	struct pcie_pkt_private *pkt_prv =
+		(struct pcie_pkt_private *)pkt->msg_binding_private;
+	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
+	struct mctp_pcie_hdr *hdr = (struct mctp_pcie_hdr *)pkt->data;
+	struct mctp_hdr *mctp_hdr = mctp_pktbuf_hdr(pkt);
+	uint16_t payload_len_dw = mctp_astpcie_tx_get_payload_size_dw(pkt);
+	uint8_t pad = mctp_astpcie_tx_get_pad_len(pkt);
+	ssize_t write_len, len;
+
+	memcpy(hdr, &mctp_pcie_hdr_template_be, sizeof(*hdr));
+
+	mctp_prdebug("TX, len: %d, pad: %d", payload_len_dw, pad);
+
+	PCIE_SET_ROUTING(hdr, pkt_prv->routing);
+	PCIE_SET_DATA_LEN(hdr, payload_len_dw);
+	PCIE_SET_REQ_ID(hdr, astpcie->bdf);
+	PCIE_SET_TARGET_ID(hdr, pkt_prv->remote_id);
+	PCIE_SET_PAD_LEN(hdr, pad);
+
+	/*
+	 * XXX: aspeed-mctp driver expects data with the same format it
+	 * was sent to userspace
+	 */
+	mctp_astpcie_swap_pcie_vdm_hdr((uint32_t *)pkt->data);
+
+	len = (payload_len_dw * sizeof(uint32_t)) +
+	      ASPEED_MCTP_PCIE_VDM_HDR_SIZE;
+
+	write_len = write(astpcie->fd, pkt->data, len);
+	if (write_len < 0) {
+		mctp_prerr("TX error");
 		return -1;
 	}
-	/* use defaults */
-	if (!pkt_prv)
-		return 0;
-
-	if (pkt_prv->routing < PCIE_ROUTE_TO_RC ||
-	    pkt_prv->routing == PCIE_RESERVED ||
-	    pkt_prv->routing > PCIE_BROADCAST_FROM_RC)
-		return -1;
-
-	header->r_fmt_type_rout |=
-		(uint8_t)(pkt_prv->routing << PCIE_FTR_TYPE_SHIFT);
-
-	memcpy(&header->pci_target_id, &pkt_prv->remote_id,
-	       sizeof(pkt_prv->remote_id));
-
-	memcpy(&header->pci_requester_id, &pkt_prv->local_id,
-	       sizeof(pkt_prv->local_id));
 
 	return 0;
 }
 
-/*
- * Tx function which writes single packet to device driver
- */
-static int mctp_binding_astpcie_tx(struct mctp_binding *binding,
-				   struct mctp_pktbuf *pkt)
+static size_t mctp_astpcie_rx_get_payload_size(struct mctp_pcie_hdr *hdr)
 {
-	int res = -1;
-	/* full mctp packet with all headers and padding */
-	ssize_t padded_pkt_len = mctp_pktbuf_end_index(pkt);
-	ssize_t num_written;
-	int i;
+	size_t len = PCIE_GET_DATA_LEN(hdr) * sizeof(uint32_t);
+	uint8_t pad = PCIE_GET_PAD_LEN(hdr);
 
-#ifndef MCTP_HAVE_FILEIO
-	mctp_prerr("MCTP_HAVE_FILEIO required for PCIe binding");
-	return -1;
-#endif
-
-	padded_pkt_len += PCIE_COUNT_PAD(padded_pkt_len);
-	/* adjust header according to requester needs */
-	res = fill_medium_specific_header(pkt);
-	if (res < 0) {
-		mctp_prerr("medium specific header error, reason = %d", res);
-
-		return -1;
-	}
-
-	/* fill padding with 0x00 (if any) */
-	for (i = mctp_pktbuf_end_index(pkt); i < padded_pkt_len; i++)
-		pkt->data[i] = 0x00;
-
-	num_written = write((binding_to_astpcie(binding))->fd, pkt->data,
-			    padded_pkt_len);
-	if (num_written < 0 || num_written > (ssize_t)padded_pkt_len) {
-		mctp_prerr("incorrect size of data written (actual: %zd, "
-			   "requested: %zd)",
-			   num_written, padded_pkt_len);
-
-		return -1;
-	}
-
-	return 0;
+	return len - pad;
 }
 
 /*
@@ -194,72 +184,49 @@ int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 
 int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 {
-	struct mctp_pktbuf *pkt;
-	struct pcie_header *header;
+	uint32_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
 	struct pcie_pkt_private pkt_prv;
-	uint8_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
-	ssize_t data_len;
-	ssize_t data_read;
-	int res;
+	struct mctp_pktbuf *pkt;
+	struct mctp_pcie_hdr *hdr;
+	struct mctp_hdr *mctp_hdr;
+	size_t read_len, payload_len;
+	int rc;
 
-#ifndef MCTP_HAVE_FILEIO
-	mctp_prerr("MCTP_HAVE_FILEIO required for PCIe binding");
-	return -1;
-#endif
-
-	data_read = read(astpcie->fd, &data, sizeof(data));
-	if (data_read < 0) {
-		mctp_prerr("Reading RX data failed (reason = %d)", errno);
-
+	read_len = read(astpcie->fd, &data, sizeof(data));
+	if (read_len < 0) {
+		mctp_prerr("Reading RX data failed (errno = %d)", errno);
 		return -1;
 	}
 
-	mctp_prdebug("Data read: %zd", data_read);
-
-	header = (struct pcie_header *)data;
-	/* calculate length of payload from PCIe header */
-	data_len = PCIE_GET_LEN(header) * sizeof(uint32_t);
-	/* check if frame is not truncated */
-	if (data_read != data_len) {
-		mctp_prerr("Sizeof of data read (%zd) differs "
-			   "from header info (%zd)",
-			   data_read, data_len);
-
+	if (read_len != ASTPCIE_PACKET_SIZE(MCTP_BTU)) {
+		mctp_prerr("Incorrect packet size: %zd", read_len);
 		return -1;
 	}
 
-	data_len -= PCIE_GET_PAD(header);
-	data_len -= sizeof(struct pcie_header);
-	mctp_prdebug("Payload len: %zd, tearl: %d, len2 %d.",
-		     data_len - sizeof(struct mctp_hdr),
-		     header->td_ep_attr_r_l1, header->len2);
+	/* XXX: Needs to be converted to BE */
+	mctp_astpcie_swap_pcie_vdm_hdr(data);
 
-	memcpy(&pkt_prv.remote_id, &header->pci_requester_id,
-	       sizeof(pkt_prv.remote_id));
-	memcpy(&pkt_prv.local_id, &header->pci_target_id,
-	       sizeof(pkt_prv.local_id));
-	pkt_prv.routing = header->r_fmt_type_rout & PCIE_FTR_ROUTING_MASK;
+	hdr = (struct mctp_pcie_hdr *)data;
+	payload_len = mctp_astpcie_rx_get_payload_size(hdr);
+
+	pkt_prv.routing = PCIE_GET_ROUTING(hdr);
+	pkt_prv.remote_id = PCIE_GET_REQ_ID(hdr);
+	pkt_prv.local_id = astpcie->bdf;
 
 	pkt = mctp_pktbuf_alloc(&astpcie->binding, 0);
 	if (!pkt) {
 		mctp_prerr("pktbuf allocation failed");
-
 		return -1;
 	}
 
-	/* copy mctp_hdr and payload */
-	res = mctp_pktbuf_push(pkt, data + sizeof(struct pcie_header),
-			       (size_t)data_len);
+	rc = mctp_pktbuf_push(pkt, data + PCIE_HDR_SIZE_DW,
+			      payload_len + sizeof(struct mctp_hdr));
 
-	if (res) {
-		mctp_prerr("Can't push to pktbuf");
+	if (rc) {
+		mctp_prerr("Cannot push to pktbuf");
 		mctp_pktbuf_free(pkt);
-
 		return -1;
 	}
-
-	mctp_prdebug("dest: %x, src: %x", (mctp_pktbuf_hdr(pkt))->dest,
-		     (mctp_pktbuf_hdr(pkt))->src);
 
 	memcpy(pkt->msg_binding_private, &pkt_prv, sizeof(pkt_prv));
 
@@ -293,8 +260,8 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 	 * other way by only by binding.
 	 * This might change as smbus binding implements support for medium
 	 * specific layer */
-	astpcie->binding.pkt_pad = sizeof(struct pcie_header);
-	astpcie->binding.pkt_priv_size = sizeof(struct pcie_header);
+	astpcie->binding.pkt_pad = sizeof(struct mctp_pcie_hdr);
+	astpcie->binding.pkt_priv_size = sizeof(struct pcie_pkt_private);
 
 	return astpcie;
 }

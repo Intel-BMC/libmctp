@@ -19,6 +19,8 @@ struct mctp_binding_astpcie {
 #define binding_to_astpcie(b)                                                  \
 	container_of(b, struct mctp_binding_astpcie, binding)
 
+#define ASTPCIE_PACKET_SIZE(x) (ASPEED_MCTP_PCIE_VDM_HDR_SIZE + x)
+
 /* driver device file */
 #define AST_DRV_FILE "/dev/aspeed-mctp"
 
@@ -60,92 +62,46 @@ struct mctp_pcie_hdr {
 #define MSG_CODE_VDM_TYPE_1 0x7f
 #define VENDOR_ID_DMTF_VDM 0xb41a
 
-/*
- * Calculates offset of payload for whole PCIe VMD frame
- */
-#define PCIE_MCTP_HDR_OFFSET (sizeof(struct pcie_header))
-#define PCIE_PAYLOAD_OFFSET (PCIE_MCTP_HDR_OFFSET + sizeof(struct mctp_hdr))
+#define PCIE_HDR_ROUTING_SHIFT 0
+#define PCIE_HDR_ROUTING_MASK 0x7
 
-/* clang-format off */
-/*
- * Defines PCIe medium specific header according to spec: DSP0238
- */
-struct pcie_header {
-#define PCIE_FTR_FMT_SHIFT (5)
-#define PCIE_FTR_FMT_MASK (0x3)
-#define PCIE_FTR_TYPE_SHIFT (0)
-#define PCIE_FTR_TYPE_MASK (0x3)
-#define PCIE_FTR_ROUTING_SHIFT (0)
-#define PCIE_FTR_ROUTING_MASK (0x7)
-	uint8_t r_fmt_type_rout;    /* [7]   - reserved
-				     * [6:5] - format: =11b for 4 dword header
-				     * [4:3] - =10b type message
-				     * [2:0] - pci message routing
-				     */
-#define PCIE_TR_TRCL_SHIFT (4)
-#define PCIE_TR_TRCL_MASK (0x7)
-#define PCIE_TR_FLAG_ATTR (1 << 2)
-#define PCIE_TR_FLAG_TH (1 << 0)
-	uint8_t r_trcl_r;           /* [7]   - reserved
-				     * [6:4] - traffic class =000b
-				     * [3:0] - reserved2, or
-				     * [3]   - reserved2
-				     * [2]   - attr: =0b
-				     * [1]   - reserved3
-				     * [0]   - TH: =0b
-				     */
-#define PCIE_TEARL_MASK_TD (0x1)
-#define PCIE_TEARL_SHIFT_TD (7)
-#define PCIE_TEARL_FLAG_TD (1<<7)
-#define PCIE_TEARL_MASK_EP (0x1)
-#define PCIE_TEARL_SHIFT_EP (6)
-#define PCIE_TEARL_FLAG_EP (1<<6)
-#define PCIE_TEARL_ATTR_SHIFT (4)
-#define PCIE_TEARL_ATTR_MASK (0x30)
-#define PCIE_TEARL_LEN1_SHIFT (0)
-#define PCIE_TEARL_LEN1_MASK (0x3)
-	uint8_t td_ep_attr_r_l1;    /* [7]    - TD =0b
-				     * [6]    - EP =0b
-				     * [5:4] - Attr =00b or =01b
-				     * [3:2] - reserved
-				     * [1:0]   - length msb
-				     */
-	uint8_t len2;               /* [7:0] - length lsb */
-	uint16_t pci_requester_id;  /* [15:0] - PCI Requester Id (bdf)
-				     */
-#define PCIE_PCITAG_PADLEN_SHIFT (4)
-#define PCIE_PCITAG_PADLEN_MASK (0x3)
-#define PCIE_PCITAG_MVC_SHIFT (0)
-#define PCIE_PCITAG_MVC_MASK (0xf)
-#define PCIE_PCITAG_MVC_VALUE (0x0) /* hardcoded value */
-	uint8_t pcitag;             /* [7:0] - PCI Tag Field
-				     * [7:6] - reserved
-				     * [5:4] - pad len
-				     * [3:0] - mctp vdm code =0000b
-				     */
+#define PCIE_GET_ROUTING(x)                                                    \
+	((x->fmt_type >> PCIE_HDR_ROUTING_SHIFT) & PCIE_HDR_ROUTING_MASK)
+#define PCIE_SET_ROUTING(x, val)                                               \
+	(x->fmt_type |=                                                        \
+	 ((val & PCIE_HDR_ROUTING_MASK) << PCIE_HDR_ROUTING_SHIFT))
 
-	uint8_t message_code;       /* 0x7F for Type 1 VDM */
-	uint16_t pci_target_id;     /* pci target id*/
-	uint16_t vendor_id;         /* vendor id =0x1ab4 for DMTF */
-} __attribute__ ((packed));
+#define PCIE_HDR_DATA_LEN_SHIFT 0
+#define PCIE_HDR_DATA_LEN_MASK 0xff03
 
-/*
- * Calculates length from header fields
- */
-#define PCIE_GET_LEN(header)                                                   \
-	(size_t)(((header)->td_ep_attr_r_l1 & PCIE_TEARL_LEN1_MASK)            \
-			 << CHAR_BIT |                                         \
-		 (header)->len2)
-/*
- * Gets padding from header
- */
-#define PCIE_GET_PAD(header)                                                   \
-	(size_t)(((header)->pcitag >> PCIE_PCITAG_PADLEN_SHIFT) &              \
-		 PCIE_PCITAG_PADLEN_MASK)
+#define PCIE_GET_DATA_LEN(x)                                                   \
+	be16toh(((x->mbz_attr_length >> PCIE_HDR_DATA_LEN_SHIFT) &             \
+		 PCIE_HDR_DATA_LEN_MASK))
 
-/*
- * Calculate padding to get dword alignment
- */
-#define PCIE_COUNT_PAD(len) ((-len) & (sizeof(uint32_t) - 1))
+#define PCIE_SET_DATA_LEN(x, val)                                              \
+	(x->mbz_attr_length |=                                                 \
+	 ((htobe16(val) & PCIE_HDR_DATA_LEN_MASK) << PCIE_HDR_DATA_LEN_SHIFT))
+
+#define PCIE_GET_REQ_ID(x) (be16toh(x->requester))
+#define PCIE_SET_REQ_ID(x, val) (x->requester |= (htobe16(val)))
+
+#define PCIE_HDR_PAD_LEN_SHIFT 4
+#define PCIE_HDR_PAD_LEN_MASK 0x3
+#define PCIE_GET_PAD_LEN(x)                                                    \
+	((x->tag >> PCIE_HDR_PAD_LEN_SHIFT) & PCIE_HDR_PAD_LEN_MASK)
+#define PCIE_SET_PAD_LEN(x, val)                                               \
+	(x->tag |= ((val & PCIE_HDR_PAD_LEN_MASK) << PCIE_HDR_PAD_LEN_SHIFT))
+
+#define PCIE_GET_TARGET_ID(x) (be16toh(x->target))
+#define PCIE_SET_TARGET_ID(x, val) (x->target |= (htobe16(val)))
+
+#define ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
+#define ALIGN(x, a) ALIGN_MASK(x, (a)-1)
+/* All PCIe packets are dword aligned */
+#define PCIE_PKT_ALIGN(x) ALIGN(x, sizeof(uint32_t))
+
+#define PCIE_HDR_SIZE_DW (sizeof(struct mctp_pcie_hdr) / sizeof(uint32_t))
+#define MCTP_HDR_SIZE_DW (sizeof(struct mctp_hdr) / sizeof(uint32_t))
+#define PCIE_VDM_HDR_SIZE_DW (PCIE_HDR_SIZE_DW + MCTP_HDR_SIZE_DW)
 
 #endif
