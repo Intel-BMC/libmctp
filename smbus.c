@@ -37,6 +37,14 @@
 #define SMBUS_COMMAND_CODE_SIZE 1
 #define SMBUS_LENGTH_FIELD_SIZE 1
 #define SMBUS_ADDR_OFFSET_SLAVE 0x1000
+#define SMBUS_MAX_PKT_PAYLOAD_SIZE 64
+
+#ifdef I2C_M_HOLD
+static struct mctp_smbus_extra_params active_mux_info = { .fd = -1,
+							  .muxHoldTimeOut = 0,
+							  .muxFlags = 0,
+							  .slave_addr = 0 };
+#endif
 
 struct mctp_smbus_header_tx {
 	uint8_t command_code;
@@ -85,50 +93,59 @@ static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint8_t address)
 	return pec;
 }
 
-static int mctp_smbus_tx(const uint8_t destSlaveAddr,
-			 struct mctp_binding_smbus *smbus, uint8_t len,
-			 uint8_t muxFlags)
+static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
+			 struct mctp_smbus_extra_params *pkt_pvt)
 {
-	//TODO: Handle mux flags after depracating callback mechanism
 #ifdef I2C_M_HOLD
-	/* Hold message */
-	uint16_t holdtimeout = 1000; // timeout in ms.
-	struct i2c_msg msg[2] =
-#else // !I2C_M_HOLD
-	struct i2c_msg msg[1] =
-#endif // I2C_M_HOLD
-		{ { .addr = destSlaveAddr >> 1, // seven bit address
-		    .flags = 0,
-		    .len = len,
-		    .buf = smbus->txbuf }
-#ifdef I2C_M_HOLD
-		  ,
-		  { .addr = 0,
-		    .flags = I2C_M_HOLD,
-		    .len = sizeof(holdtimeout),
-		    .buf = (uint8_t *)&holdtimeout }
-#endif // I2C_M_HOLD
-		};
+	int rc;
+	if (pkt_pvt->muxFlags) {
+		uint16_t holdtimeout =
+			pkt_pvt->muxHoldTimeOut; // timeout in ms.
+		struct i2c_msg msg[2] = { { .addr = pkt_pvt->slave_addr >>
+						    1, // seven bit address
+					    .flags = 0,
+					    .len = len,
+					    .buf = smbus->txbuf },
+					  { .addr = 0,
+					    .flags = I2C_M_HOLD,
+					    .len = sizeof(holdtimeout),
+					    .buf = (uint8_t *)&holdtimeout } };
 
-#ifdef I2C_M_HOLD
-	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 2 };
-#else // !I2C_M_HOLD
+		struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 2 };
+		rc = ioctl(pkt_pvt->fd, I2C_RDWR, &msgrdwr);
+
+		/* Store active mux info */
+		active_mux_info.fd = pkt_pvt->fd;
+		active_mux_info.muxFlags = pkt_pvt->muxFlags;
+		active_mux_info.slave_addr = pkt_pvt->slave_addr;
+
+		return rc;
+	}
+
+#endif
+	struct i2c_msg msg[1] = { { .addr = pkt_pvt->slave_addr >>
+					    1, // seven bit address
+				    .flags = 0,
+				    .len = len,
+				    .buf = smbus->txbuf } };
 	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 1 };
-#endif // I2C_M_HOLD
-	return ioctl(smbus->out_fd, I2C_RDWR, &msgrdwr);
+	return ioctl(pkt_pvt->fd, I2C_RDWR, &msgrdwr);
 }
 
 #ifdef I2C_M_HOLD
-static int mctp_smbus_unhold_bus(struct mctp_binding_smbus *smbus)
+static int mctp_smbus_unhold_bus(const uint8_t source_addr)
 {
+	/* If we received a packet from a different slave, don't unhold mux */
+	if (active_mux_info.slave_addr != source_addr)
+		return 0;
 	/* Unhold message */
-	uint16_t holdtimeout = 0; // unhold
+	uint16_t holdtimeout = 0;
 	struct i2c_msg holdmsg = { 0, I2C_M_HOLD, sizeof(holdtimeout),
 				   (uint8_t *)&holdtimeout };
 
 	struct i2c_rdwr_ioctl_data msgrdwr = { &holdmsg, 1 };
 
-	return ioctl(smbus->out_fd, I2C_RDWR, &msgrdwr);
+	return ioctl(active_mux_info.fd, I2C_RDWR, &msgrdwr);
 }
 #endif // I2C_M_HOLD
 
@@ -144,32 +161,22 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 {
 	struct mctp_binding_smbus *smbus = binding_to_smbus(b);
 	struct mctp_smbus_header_tx *smbus_hdr_tx = (void *)smbus->txbuf;
-	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
-	struct mctp_smbus_extra_params *pvt_data =
+	struct mctp_smbus_extra_params *pkt_pvt =
 		(struct mctp_smbus_extra_params *)pkt->msg_binding_private;
+	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
 
-	uint8_t destSlaveAddr = 0;
-	uint8_t muxFlags = 0;
-
-	//TODO: Deprecate callback mechanism
-	if (!getSlaveAddrCallback ||
-	    getSlaveAddrCallback(mctp_hdr->dest, &destSlaveAddr) < 0) {
-		mctp_prerr(
-			"get slave address callbcack not set or error in getting "
-			"destination slave address");
-		return -1;
+#ifdef I2C_M_HOLD
+	/* Set muxFlags only for EOM packets */
+	if (!(mctp_hdr->flags_seq_tag & MCTP_HDR_FLAG_EOM)) {
+		pkt_pvt->muxFlags = 0;
 	}
-	/*If message binding private values are set, override the existing
-         * binding params with the one provided in message binding private*/
-
-	if (pvt_data) {
-		mctp_smbus_set_out_fd(smbus, pvt_data->fd);
-		destSlaveAddr = pvt_data->slave_addr;
-		muxFlags = pvt_data->muxFlags;
-	}
+#endif
 
 	smbus_hdr_tx->command_code = MCTP_COMMAND_CODE;
-
+	if (!pkt_pvt) {
+		mctp_prerr("Binding private information not available");
+		return -1;
+	}
 	/* the length field in the header excludes smbus framing
      * and escape sequences */
 	size_t pkt_length = mctp_pktbuf_size(pkt);
@@ -180,7 +187,7 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	uint8_t i2c_message_len = txBufLen + pkt_length + SMBUS_PEC_BYTE_SIZE;
 	if (i2c_message_len > sizeof(smbus->txbuf)) {
 		mctp_prerr(
-			"tx message length exceeds max smbus message lenght");
+			"tx message length exceeds max smbus message length");
 		return -1;
 	}
 
@@ -188,10 +195,9 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	txBufLen += pkt_length;
 
 	smbus->txbuf[txBufLen] =
-		calculate_pec_byte(smbus->txbuf, txBufLen, destSlaveAddr);
+		calculate_pec_byte(smbus->txbuf, txBufLen, pkt_pvt->slave_addr);
 
-	if (mctp_smbus_tx(destSlaveAddr, smbus, i2c_message_len, muxFlags) <
-	    0) {
+	if (mctp_smbus_tx(smbus, i2c_message_len, pkt_pvt) < 0) {
 		mctp_prerr("Error in tx of smbus message");
 		return -1;
 	}
@@ -204,6 +210,11 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 {
 	ssize_t len = 0;
 	struct mctp_smbus_header_rx *smbus_hdr_rx;
+	struct mctp_smbus_extra_params pvt_data;
+#ifdef I2C_M_HOLD
+	struct mctp_hdr *mctp_hdr;
+	bool eom = false;
+#endif
 
 	int ret = lseek(smbus->in_fd, 0, SEEK_SET);
 	if (ret < 0) {
@@ -212,11 +223,18 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	}
 
 	len = read(smbus->in_fd, smbus->rxbuf, sizeof(smbus->rxbuf));
+
+	if (len < 0) {
+		mctp_prerr("Failed to read");
+		return -1;
+	}
+
 	if (len < sizeof(*smbus_hdr_rx)) {
 		// This condition hits from from time to time, even with
 		// a properly written poll loop, although it's not clear
 		// why. Return an error so that the upper layer can
 		// retry.
+		mctp_prerr("Invalid packet size");
 		return 0;
 	}
 
@@ -244,11 +262,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		return 0;
 	}
 
-	if (len < 0) {
-		mctp_prerr("can't read from smbus device: %m");
-		return -1;
-	}
-
 	smbus->rx_pkt = mctp_pktbuf_alloc(&(smbus->binding), 0);
 	assert(smbus->rx_pkt);
 
@@ -259,7 +272,13 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		return -1;
 	}
 
-	struct mctp_smbus_extra_params pvt_data;
+#ifdef I2C_M_HOLD
+	mctp_hdr = mctp_pktbuf_hdr(smbus->rx_pkt);
+	if (mctp_hdr->flags_seq_tag & MCTP_HDR_FLAG_EOM) {
+		eom = true;
+	}
+#endif
+
 	memset(&pvt_data, 0, sizeof(struct mctp_smbus_extra_params));
 
 	pvt_data.slave_addr = (smbus_hdr_rx->source_slave_address & ~1);
@@ -268,15 +287,15 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 
 	mctp_bus_rx(&(smbus->binding), smbus->rx_pkt);
 
-	smbus->rx_pkt = NULL;
-
 #ifdef I2C_M_HOLD
-	if (mctp_smbus_unhold_bus(smbus)) {
+	/* Unhold mux only for packets with EOM */
+	if (eom && mctp_smbus_unhold_bus(pvt_data.slave_addr)) {
 		mctp_prerr("Can't hold mux");
 		return -1;
 	}
 #endif // I2C_M_HOLD
 
+	smbus->rx_pkt = NULL;
 	return 0;
 }
 
@@ -311,7 +330,7 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	smbus->rx_pkt = NULL;
 	smbus->binding.name = "smbus";
 	smbus->binding.version = 1;
-	smbus->binding.pkt_size = sizeof(smbus->rxbuf);
+	smbus->binding.pkt_size = SMBUS_MAX_PKT_PAYLOAD_SIZE;
 	smbus->binding.pkt_priv_size = sizeof(struct mctp_smbus_extra_params);
 
 	smbus->binding.tx = mctp_binding_smbus_tx;

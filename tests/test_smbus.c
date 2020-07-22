@@ -40,7 +40,6 @@ int main(void)
 	assert(strcmp(smbus->binding.name, "smbus") == 0);
 	assert(smbus->binding.version == 1);
 	assert(smbus->binding.tx != NULL);
-	assert(smbus->binding.pkt_size == sizeof(smbus->rxbuf));
 
 	mctp_smbus_register_bus(smbus, mctp, TEST_EID);
 	assert(smbus->bus_id == 0);
