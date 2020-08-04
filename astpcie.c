@@ -111,8 +111,8 @@ static uint16_t mctp_astpcie_tx_get_payload_size_dw(struct mctp_pktbuf *pkt)
  */
 static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 {
-	struct pcie_pkt_private *pkt_prv =
-		(struct pcie_pkt_private *)pkt->msg_binding_private;
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)pkt->msg_binding_private;
 	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
 	struct mctp_pcie_hdr *hdr = (struct mctp_pcie_hdr *)pkt->data;
 	struct mctp_hdr *mctp_hdr = mctp_pktbuf_hdr(pkt);
@@ -189,7 +189,7 @@ int mctp_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 {
 	uint32_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
-	struct pcie_pkt_private pkt_prv;
+	struct mctp_astpcie_pkt_private pkt_prv;
 	struct mctp_pktbuf *pkt;
 	struct mctp_pcie_hdr *hdr;
 	struct mctp_hdr *mctp_hdr;
@@ -268,7 +268,8 @@ struct mctp_binding_astpcie *mctp_astpcie_init(void)
 	 * This might change as smbus binding implements support for medium
 	 * specific layer */
 	astpcie->binding.pkt_pad = sizeof(struct mctp_pcie_hdr);
-	astpcie->binding.pkt_priv_size = sizeof(struct pcie_pkt_private);
+	astpcie->binding.pkt_priv_size =
+		sizeof(struct mctp_astpcie_pkt_private);
 
 	return astpcie;
 }

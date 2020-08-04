@@ -76,7 +76,8 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 			       size_t len, void *ext)
 {
 	struct mctp_ctrl_req *req = (struct mctp_ctrl_req *)msg;
-	struct pcie_pkt_private *pkt_prv = (struct pcie_pkt_private *)ext;
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
 	int resp_len = sizeof(struct mctp_ctrl_msg_hdr);
 	struct ctx *ctx = (struct ctx *)data;
 	uint8_t cmd;
@@ -158,7 +159,7 @@ static void discovery_with_notify_flow(struct mctp_binding_astpcie *astpcie,
 				       struct ctx *ctx)
 {
 	struct mctp_ctrl_req req;
-	struct pcie_pkt_private pkt_prv;
+	struct mctp_astpcie_pkt_private pkt_prv;
 	int rc;
 
 	ctx->discovered = false;

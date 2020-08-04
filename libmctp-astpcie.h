@@ -34,9 +34,8 @@ void mctp_astpcie_free(struct mctp_binding_astpcie *b);
 /*
  * Routing types
  */
-enum pcie_message_routing {
+enum mctp_astpcie_msg_routing {
 	PCIE_ROUTE_TO_RC = 0,
-	PCIE_RESERVED = 1,
 	PCIE_ROUTE_BY_ID = 2,
 	PCIE_BROADCAST_FROM_RC = 3
 };
@@ -44,8 +43,8 @@ enum pcie_message_routing {
 /*
  * Extended data for transport layer control
  */
-struct pcie_pkt_private {
-	enum pcie_message_routing routing;
+struct mctp_astpcie_pkt_private {
+	enum mctp_astpcie_msg_routing routing;
 	/* source (rx)/target (tx) endpoint bdf */
 	uint16_t remote_id;
 
@@ -54,9 +53,9 @@ struct pcie_pkt_private {
 	 * FIXME: In libmctp core there is no support for response, which means
 	 * that we are not able to send MCTP packet with TO bit = 0b and MsgTag
 	 * matching the request.
-	 * Temporarily, as a workaround, we will store flags_seq_tag of the
-	 * request's mctp_hdr in pcie_pkt_private to be able set both fields
-	 * correctly in response time.
+	 * Temporarily, as a workaround, we will store flags_seq_tag of the request's
+	 * mctp_hdr in mctp_astpcie_pkt_private to be able set both fields correctly
+	 * in response time.
 	 * Remove, when dedicated API for response is added.
 	 */
 	uint8_t flags_seq_tag;
