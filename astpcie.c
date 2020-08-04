@@ -290,3 +290,8 @@ struct mctp_binding *mctp_astpcie_core(struct mctp_binding_astpcie *astpcie)
 {
 	return &astpcie->binding;
 }
+
+int mctp_astpcie_get_fd(struct mctp_binding_astpcie *astpcie)
+{
+	return astpcie->fd;
+}

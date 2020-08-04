@@ -31,6 +31,8 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie);
 
 void mctp_astpcie_free(struct mctp_binding_astpcie *b);
 
+int mctp_astpcie_get_fd(struct mctp_binding_astpcie *astpcie);
+
 /*
  * Routing types
  */
