@@ -21,16 +21,15 @@ extern "C" {
 
 struct mctp_binding_astpcie;
 
-struct mctp_binding_astpcie *mctp_binding_astpcie_init(void);
+struct mctp_binding_astpcie *mctp_astpcie_init(void);
 
-struct mctp_binding *mctp_binding_astpcie_core(struct mctp_binding_astpcie *b);
+struct mctp_binding *mctp_astpcie_core(struct mctp_binding_astpcie *b);
 
-int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie,
-			      int timeout);
+int mctp_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout);
 
-int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie);
+int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie);
 
-void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b);
+void mctp_astpcie_free(struct mctp_binding_astpcie *b);
 
 /*
  * Routing types
@@ -63,6 +62,11 @@ struct pcie_pkt_private {
 	uint8_t flags_seq_tag;
 #endif
 };
+
+/* TODO: Remove, when libmctp callers use the new naming */
+#define mctp_binding_astpcie_init mctp_astpcie_init
+#define mctp_binding_astpcie_core mctp_astpcie_core
+#define mctp_binding_astpcie_free mctp_astpcie_free
 
 #ifdef __cplusplus
 }

@@ -34,7 +34,7 @@ static const struct mctp_pcie_hdr mctp_pcie_hdr_template_be = {
 	.vendor = VENDOR_ID_DMTF_VDM
 };
 
-static int mctp_binding_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
+static int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
 {
 	struct aspeed_mctp_get_bdf bdf;
 	int rc;
@@ -46,7 +46,7 @@ static int mctp_binding_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
 	return rc;
 }
 
-static int mctp_binding_astpcie_open(struct mctp_binding_astpcie *astpcie)
+static int mctp_astpcie_open(struct mctp_binding_astpcie *astpcie)
 {
 	int fd = open(AST_DRV_FILE, O_RDWR);
 
@@ -63,16 +63,16 @@ static int mctp_binding_astpcie_open(struct mctp_binding_astpcie *astpcie)
 /*
  * Start function. Opens driver and read bdf
  */
-static int mctp_binding_astpcie_start(struct mctp_binding *b)
+static int mctp_astpcie_start(struct mctp_binding *b)
 {
 	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
 	int rc;
 
 	assert(astpcie);
 
-	rc = mctp_binding_astpcie_open(astpcie);
+	rc = mctp_astpcie_open(astpcie);
 	if (!rc)
-		rc = mctp_binding_astpcie_get_bdf(astpcie);
+		rc = mctp_astpcie_get_bdf(astpcie);
 
 	return rc;
 }
@@ -109,8 +109,7 @@ static uint16_t mctp_astpcie_tx_get_payload_size_dw(struct mctp_pktbuf *pkt)
 /*
  * Tx function which writes single packet to device driver
  */
-static int mctp_binding_astpcie_tx(struct mctp_binding *b,
-				   struct mctp_pktbuf *pkt)
+static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 {
 	struct pcie_pkt_private *pkt_prv =
 		(struct pcie_pkt_private *)pkt->msg_binding_private;
@@ -165,7 +164,7 @@ static size_t mctp_astpcie_rx_get_payload_size(struct mctp_pcie_hdr *hdr)
 /*
  * Simple poll implementation for use
  */
-int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
+int mctp_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 {
 	struct pollfd fds[1];
 	int rc;
@@ -187,7 +186,7 @@ int mctp_binding_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 	return 0;
 }
 
-int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
+int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 {
 	uint32_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
 	struct pcie_pkt_private pkt_prv;
@@ -246,7 +245,7 @@ int mctp_binding_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 /*
  * Initializes PCIe binding structure
  */
-struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
+struct mctp_binding_astpcie *mctp_astpcie_init(void)
 {
 	struct mctp_binding_astpcie *astpcie;
 
@@ -258,8 +257,8 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 
 	astpcie->binding.name = "astpcie";
 	astpcie->binding.version = 1;
-	astpcie->binding.tx = mctp_binding_astpcie_tx;
-	astpcie->binding.start = mctp_binding_astpcie_start;
+	astpcie->binding.tx = mctp_astpcie_tx;
+	astpcie->binding.start = mctp_astpcie_start;
 	astpcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
 
 	/* where mctp_hdr starts in in/out comming data
@@ -277,7 +276,7 @@ struct mctp_binding_astpcie *mctp_binding_astpcie_init(void)
 /*
  * Closes file descriptor and releases binding memory
  */
-void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b)
+void mctp_astpcie_free(struct mctp_binding_astpcie *b)
 {
 	close(b->fd);
 	__mctp_free(b);
@@ -286,8 +285,7 @@ void mctp_binding_astpcie_free(struct mctp_binding_astpcie *b)
 /*
  * Returns generic binder handler from PCIe binding handler
  */
-struct mctp_binding *
-mctp_binding_astpcie_core(struct mctp_binding_astpcie *astpcie)
+struct mctp_binding *mctp_astpcie_core(struct mctp_binding_astpcie *astpcie)
 {
 	return &astpcie->binding;
 }

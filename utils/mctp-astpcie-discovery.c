@@ -146,9 +146,9 @@ static void discovery_regular_flow(struct mctp_binding_astpcie *astpcie,
 	int rc;
 
 	while (!ctx->discovered) {
-		rc = mctp_binding_astpcie_poll(astpcie, 1000);
+		rc = mctp_astpcie_poll(astpcie, 1000);
 		if (rc & POLLIN) {
-			rc = mctp_binding_astpcie_rx(astpcie);
+			rc = mctp_astpcie_rx(astpcie);
 			assert(rc == 0);
 		}
 	}
@@ -194,10 +194,10 @@ int main(void)
 	mctp = mctp_init();
 	assert(mctp);
 
-	astpcie = mctp_binding_astpcie_init();
+	astpcie = mctp_astpcie_init();
 	assert(astpcie);
 
-	astpcie_binding = mctp_binding_astpcie_core(astpcie);
+	astpcie_binding = mctp_astpcie_core(astpcie);
 	assert(astpcie_binding);
 
 	rc = mctp_register_bus(mctp, astpcie_binding, INIT_EID);
@@ -215,7 +215,7 @@ int main(void)
 
 	discovery_with_notify_flow(astpcie, &ctx);
 
-	mctp_binding_astpcie_free(astpcie);
+	mctp_astpcie_free(astpcie);
 	mctp_destroy(mctp);
 
 	return 0;
