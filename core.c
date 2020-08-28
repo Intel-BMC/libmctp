@@ -798,6 +798,18 @@ bool mctp_encode_ctrl_cmd_get_vdm_support(
 	return true;
 }
 
+bool mctp_encode_ctrl_cmd_discovery_notify(
+	struct mctp_ctrl_cmd_discovery_notify *discovery_notify_cmd,
+	uint8_t rq_dgram_inst)
+{
+	if (!discovery_notify_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&discovery_notify_cmd->ctrl_msg_hdr,
+			       rq_dgram_inst, MCTP_CTRL_CMD_DISCOVERY_NOTIFY);
+	return true;
+}
+
 static inline mctp_eid_t mctp_bus_get_eid(struct mctp_bus *bus)
 {
 	return bus->eid;

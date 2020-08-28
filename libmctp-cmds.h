@@ -55,6 +55,10 @@ struct mctp_ctrl_cmd_get_vdm_support {
 	uint8_t vendor_id_set_selector;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_cmd_discovery_notify {
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
+} __attribute__((__packed__));
+
 #define MCTP_CTRL_HDR_MSG_TYPE 0
 #define MCTP_CTRL_HDR_FLAG_REQUEST (1 << 7)
 #define MCTP_CTRL_HDR_FLAG_DGRAM (1 << 6)
@@ -143,6 +147,11 @@ struct mctp_ctrl_resp_set_eid {
 	uint8_t eid_pool_size;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_resp_discovery_notify {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+} __attribute__((__packed__));
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length, void *msg_binding_private);
@@ -170,6 +179,10 @@ bool mctp_encode_ctrl_cmd_get_msg_type_support(
 bool mctp_encode_ctrl_cmd_get_vdm_support(
 	struct mctp_ctrl_cmd_get_vdm_support *vdm_support_cmd,
 	uint8_t rq_dgram_inst, uint8_t v_id_set_selector);
+
+bool mctp_encode_ctrl_cmd_discovery_notify(
+	struct mctp_ctrl_cmd_discovery_notify *discovery_notify_cmd,
+	uint8_t rq_dgram_inst);
 
 void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 
