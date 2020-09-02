@@ -824,10 +824,12 @@ static inline void mctp_bus_set_eid(struct mctp_bus *bus, mctp_eid_t eid)
  * @brief Sets the EID accordingly to the provided policy and creates response.
  * See DSP0236 1.3.0 12.3
  */
-int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, struct mctp_bus *bus,
+int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 				  struct mctp_ctrl_cmd_set_eid *request,
 				  struct mctp_ctrl_resp_set_eid *response)
 {
+	struct mctp_bus* bus = find_bus_for_eid(mctp, dest_eid);
+
 	if (!request || !response)
 		return -1;
 	if (request->eid == MCTP_EID_BROADCAST ||
@@ -878,10 +880,12 @@ uint8_t mctp_binding_get_medium_info(struct mctp_binding *binding)
  * @brief Creates control message response for Get Endpoint ID.
  * See DSP0236 1.3.0 12.4.
  */
-int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, struct mctp_bus *bus,
+int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 				  bool bus_owner,
 				  struct mctp_ctrl_resp_get_eid *response)
 {
+	struct mctp_bus* bus = find_bus_for_eid(mctp, dest_eid);
+
 	if (response == NULL)
 		return -1;
 	response->eid = mctp_bus_get_eid(bus);

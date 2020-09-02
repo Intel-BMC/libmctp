@@ -152,6 +152,16 @@ struct mctp_ctrl_resp_discovery_notify {
 	uint8_t completion_code;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_resp_prepare_discovery {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_resp_endpoint_discovery {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+} __attribute__((__packed__));
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length, void *msg_binding_private);
@@ -189,6 +199,14 @@ void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 bool mctp_is_mctp_ctrl_msg(void *buf, size_t len);
 
 bool mctp_ctrl_msg_is_req(void *buf, size_t len);
+
+int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
+				  struct mctp_ctrl_cmd_set_eid *request,
+				  struct mctp_ctrl_resp_set_eid *response);
+
+int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
+				  bool bus_owner,
+				  struct mctp_ctrl_resp_get_eid *response);
 
 #ifdef __cplusplus
 }
