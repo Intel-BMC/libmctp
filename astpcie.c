@@ -4,8 +4,6 @@
 #include "config.h"
 #endif
 
-#include <byteswap.h>
-#include <endian.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -77,22 +75,6 @@ static int mctp_astpcie_start(struct mctp_binding *b)
 	return rc;
 }
 
-/*
- * Structures in libmctp (i.e. struct mctp_hdr) are defined in "network format"
- * (big endian), which means that we need to convert PCIe VDM header from LE
- * (host) to BE and make sure that any operations on data types larger than
- * one byte need to be done in BE (for set) or LE (for get).
- *
- * TODO: Remove if the kernel implementation is changed.
- */
-static void mctp_astpcie_swap_pcie_vdm_hdr(uint32_t *data)
-{
-	int i;
-
-	for (i = 0; i < PCIE_VDM_HDR_SIZE_DW; i++)
-		data[i] = bswap_32(data[i]);
-}
-
 static uint8_t mctp_astpcie_tx_get_pad_len(struct mctp_pktbuf *pkt)
 {
 	size_t sz = mctp_pktbuf_size(pkt);
@@ -134,12 +116,6 @@ static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 	PCIE_SET_REQ_ID(hdr, astpcie->bdf);
 	PCIE_SET_TARGET_ID(hdr, pkt_prv->remote_id);
 	PCIE_SET_PAD_LEN(hdr, pad);
-
-	/*
-	 * XXX: aspeed-mctp driver expects data with the same format it
-	 * was sent to userspace
-	 */
-	mctp_astpcie_swap_pcie_vdm_hdr((uint32_t *)pkt->data);
 
 	len = (payload_len_dw * sizeof(uint32_t)) +
 	      ASPEED_MCTP_PCIE_VDM_HDR_SIZE;
@@ -206,9 +182,6 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 		mctp_prerr("Incorrect packet size: %zd", read_len);
 		return -1;
 	}
-
-	/* XXX: Needs to be converted to BE */
-	mctp_astpcie_swap_pcie_vdm_hdr(data);
 
 	hdr = (struct mctp_pcie_hdr *)data;
 	payload_len = mctp_astpcie_rx_get_payload_size(hdr);
