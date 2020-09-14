@@ -1014,3 +1014,15 @@ bool mctp_ctrl_msg_is_req(void *buf, size_t len)
 {
 	return mctp_ctrl_msg_is_request(buf, len);
 }
+
+int mctp_ctrl_cmd_get_vdm_support(
+	struct mctp *mctp, mctp_eid_t src_eid,
+	struct mctp_ctrl_resp_get_vdm_support *response)
+{
+	if (!response)
+		return -1;
+
+	response->completion_code = MCTP_CTRL_CC_SUCCESS;
+	/* no more capabiliy sets (default) */
+	return 0;
+}
