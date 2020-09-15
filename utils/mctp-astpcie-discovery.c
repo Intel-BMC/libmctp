@@ -11,8 +11,6 @@
 #define pr_fmt(x) "test: " x
 #endif
 
-#define INIT_EID 0x00
-
 struct mctp_ctrl_req {
 	struct mctp_ctrl_msg_hdr hdr;
 	uint8_t data[MCTP_BTU];
@@ -30,6 +28,7 @@ struct ctx {
 	mctp_eid_t eid;
 	bool discovered;
 	uint16_t bus_owner_bdf;
+	mctp_eid_t bus_owner_eid;
 };
 
 static int discovery_prepare_broadcast_resp(void)
@@ -41,28 +40,39 @@ static int discovery_prepare_broadcast_resp(void)
 	return 1;
 }
 
-static int discovery_prepare_get_endpoint_id_resp(void)
+static int discovery_prepare_get_endpoint_id_resp(struct ctx *ctx)
 {
+	struct mctp_ctrl_resp_get_eid *get_eid_resp;
+	int rc;
+
 	mctp_prdebug("Get endpoint ID");
 
-	resp.completion_code = 0;
+	get_eid_resp = (struct mctp_ctrl_resp_get_eid *)&resp;
 
-	resp.data[0] = 0; /* Endpoint ID not yet assigned */
-	resp.data[1] = 0; /* Simple Endpoint */
-	resp.data[2] = 0; /* Medium specific */
+	rc = mctp_ctrl_cmd_get_endpoint_id(ctx->mctp, ctx->bus_owner_eid, false,
+					   get_eid_resp);
+
+	assert(rc == 0);
 
 	return 4;
 }
 
-static int discovery_prepare_set_endpoint_id_resp(mctp_eid_t eid)
+static int discovery_prepare_set_endpoint_id_resp(struct ctx *ctx,
+						  struct mctp_ctrl_req *req)
 {
+	struct mctp_ctrl_resp_set_eid *set_eid_resp;
+	struct mctp_ctrl_cmd_set_eid *set_eid_req;
+	int rc;
+
 	mctp_prdebug("Set endpoint ID");
 
-	resp.completion_code = 0;
+	set_eid_req = (struct mctp_ctrl_cmd_set_eid *)req;
+	set_eid_resp = (struct mctp_ctrl_resp_set_eid *)&resp;
 
-	resp.data[0] = 0; /* Endpoint ID accepted */
-	resp.data[1] = eid;
-	resp.data[2] = 0; /* No dynamic pool eid */
+	rc = mctp_ctrl_cmd_set_endpoint_id(ctx->mctp, ctx->bus_owner_eid,
+					   set_eid_req, set_eid_resp);
+
+	assert(rc == 0);
 
 	return 4;
 }
@@ -94,7 +104,17 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 
 	switch (cmd) {
 	case MCTP_CTRL_CMD_PREPARE_ENDPOINT_DISCOVERY:
+		ctx->discovered = false;
+		pkt_prv->routing = PCIE_ROUTE_TO_RC;
+		ctx->bus_owner_bdf = pkt_prv->remote_id;
+		pkt_prv->remote_id = 0x00;
+		resp_len += discovery_prepare_broadcast_resp();
+		break;
 	case MCTP_CTRL_CMD_ENDPOINT_DISCOVERY:
+		if (ctx->discovered == true) {
+			mctp_prwarn("Not handled: %d", cmd);
+			return;
+		}
 		pkt_prv->routing = PCIE_ROUTE_TO_RC;
 		ctx->bus_owner_bdf = pkt_prv->remote_id;
 		pkt_prv->remote_id = 0x00;
@@ -102,13 +122,13 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 		break;
 	case MCTP_CTRL_CMD_GET_ENDPOINT_ID:
 		pkt_prv->routing = PCIE_ROUTE_BY_ID;
-		resp_len += discovery_prepare_get_endpoint_id_resp();
+		resp_len += discovery_prepare_get_endpoint_id_resp(ctx);
 		break;
 	case MCTP_CTRL_CMD_SET_ENDPOINT_ID:
 		ctx->discovered = true;
 		ctx->eid = req->data[1];
 		pkt_prv->routing = PCIE_ROUTE_BY_ID;
-		resp_len += discovery_prepare_set_endpoint_id_resp(ctx->eid);
+		resp_len += discovery_prepare_set_endpoint_id_resp(ctx, req);
 		break;
 
 	default:
@@ -121,6 +141,7 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 #endif
 	mctp_binding_set_tx_enabled(ctx->astpcie_binding, true);
 	rc = mctp_message_tx(ctx->mctp, src, &resp, resp_len, (void *)pkt_prv);
+	assert(rc == 0);
 }
 
 static void rx_message(mctp_eid_t src, void *data, void *msg, size_t len,
@@ -169,12 +190,13 @@ static void discovery_with_notify_flow(struct mctp_binding_astpcie *astpcie,
 	req.hdr.command_code = MCTP_CTRL_CMD_DISCOVERY_NOTIFY;
 
 	pkt_prv.routing = PCIE_ROUTE_TO_RC;
-	pkt_prv.remote_id = ctx->bus_owner_bdf;
+	pkt_prv.remote_id = 0xffff;
 
 #ifdef MCTP_ASTPCIE_RESPONSE_WA
 	pkt_prv.flags_seq_tag |= MCTP_HDR_FLAG_TO;
 #endif
 
+	mctp_binding_set_tx_enabled(ctx->astpcie_binding, true);
 	rc = mctp_message_tx(ctx->mctp, 0x00, &req,
 			     sizeof(struct mctp_ctrl_msg_hdr), &pkt_prv);
 	assert(rc == 0);
@@ -201,18 +223,17 @@ int main(void)
 	astpcie_binding = mctp_astpcie_core(astpcie);
 	assert(astpcie_binding);
 
-	rc = mctp_register_bus(mctp, astpcie_binding, INIT_EID);
+	rc = mctp_register_bus_dynamic_eid(mctp, astpcie_binding);
 	assert(rc == 0);
 
 	ctx.mctp = mctp;
 	ctx.astpcie_binding = astpcie_binding;
 	ctx.discovered = false;
+	ctx.bus_owner_eid = 8;
 
 	mctp_set_rx_all(mctp, rx_message, &ctx);
 
 	mctp_set_rx_ctrl(mctp, rx_control_message, &ctx);
-
-	discovery_regular_flow(astpcie, &ctx);
 
 	discovery_with_notify_flow(astpcie, &ctx);
 
