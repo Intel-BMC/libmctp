@@ -310,11 +310,18 @@ int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd)
 }
 #endif
 
-void mctp_smbus_register_bus(struct mctp_binding_smbus *smbus,
-			     struct mctp *mctp, mctp_eid_t eid)
+int mctp_smbus_register_bus(struct mctp_binding_smbus *smbus, struct mctp *mctp,
+			    mctp_eid_t eid)
 {
-	smbus->bus_id = mctp_register_bus(mctp, &smbus->binding, eid);
-	mctp_binding_set_tx_enabled(&smbus->binding, true);
+	int rc = mctp_register_bus(mctp, &smbus->binding, eid);
+
+	if (rc == 0) {
+		/* TODO: Can we drop bus_id from mctp_binding_smbus? */
+		smbus->bus_id = 0;
+		mctp_binding_set_tx_enabled(&smbus->binding, true);
+	}
+
+	return rc;
 }
 
 struct mctp_binding_smbus *mctp_smbus_init(void)

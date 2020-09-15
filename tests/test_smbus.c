@@ -20,15 +20,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TEST_EID 7
+#define TEST_EID 8
 
 int main(void)
 {
-	int res;
 	struct mctp *mctp;
 	struct mctp_binding *binding;
 	struct mctp_pktbuf pkt;
 	struct mctp_binding_smbus *smbus;
+	int rc;
 
 	mctp_set_log_stdio(MCTP_LOG_DEBUG);
 
@@ -41,8 +41,8 @@ int main(void)
 	assert(smbus->binding.version == 1);
 	assert(smbus->binding.tx != NULL);
 
-	mctp_smbus_register_bus(smbus, mctp, TEST_EID);
-	assert(smbus->bus_id == 0);
+	rc = mctp_smbus_register_bus(smbus, mctp, TEST_EID);
+	assert(rc == 0);
 
 	/* cleanup */
 	mctp_smbus_free(smbus);

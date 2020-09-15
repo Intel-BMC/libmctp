@@ -20,6 +20,7 @@
 
 struct mctp_bus {
 	mctp_eid_t eid;
+	bool has_static_eid;
 	struct mctp_binding *binding;
 	bool tx_enabled;
 
@@ -306,8 +307,7 @@ static struct mctp_bus *find_bus_for_eid(struct mctp *mctp, mctp_eid_t dest
 	return &mctp->busses[0];
 }
 
-int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
-		      mctp_eid_t eid)
+static int register_bus(struct mctp *mctp, struct mctp_binding *binding)
 {
 	int res = 0;
 	/* todo: multiple busses */
@@ -316,7 +316,6 @@ int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 	mctp->busses = __mctp_alloc(sizeof(struct mctp_bus));
 	memset(mctp->busses, 0, sizeof(struct mctp_bus));
 	mctp->busses[0].binding = binding;
-	mctp->busses[0].eid = eid;
 	binding->bus = &mctp->busses[0];
 	binding->mctp = mctp;
 	mctp->route_policy = ROUTE_ENDPOINT;
@@ -324,6 +323,45 @@ int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 	if (binding->start)
 		res = binding->start(binding);
 
+	return res;
+}
+
+int mctp_register_bus_dynamic_eid(struct mctp *mctp,
+				  struct mctp_binding *binding)
+{
+	return register_bus(mctp, binding);
+}
+
+static bool mctp_eid_is_special(mctp_eid_t eid)
+{
+	return eid == MCTP_EID_NULL || eid == MCTP_EID_BROADCAST;
+}
+
+/*
+ * According to section 8.2 of DSP0236, the special and reserved EIDs should
+ * not be used for assignment and allocation to endpoints.
+ */
+static bool mctp_eid_is_valid(mctp_eid_t eid)
+{
+	return !mctp_eid_is_special(eid) && eid >= 8;
+}
+
+int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
+		      mctp_eid_t eid)
+{
+	int res;
+
+	if (!mctp_eid_is_valid(eid))
+		return -1;
+
+	res = register_bus(mctp, binding);
+
+	if (res)
+		goto out;
+
+	mctp->busses[0].has_static_eid = true;
+	mctp->busses[0].eid = eid;
+out:
 	return res;
 }
 
@@ -893,8 +931,10 @@ int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 	if (mctp->route_policy == ROUTE_BRIDGE || bus_owner == true) {
 		response->eid_type |= (1 << 4);
 	}
-	/* TODO: support dynamic EID? */
-	response->eid_type |= (1 << 1);
+
+	if (bus->has_static_eid)
+		response->eid_type |= (1 << 1);
+
 	response->medium_data = mctp_binding_get_medium_info(bus->binding);
 	response->completion_code = MCTP_CTRL_CC_SUCCESS;
 	return 0;
