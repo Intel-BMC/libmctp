@@ -554,7 +554,7 @@ static int mctp_packet_tx(struct mctp_bus *bus, struct mctp_pktbuf *pkt)
 static int mctp_send_tx_queue(struct mctp_bus *bus)
 {
 	struct mctp_pktbuf *pkt;
-	int rc;
+	int rc = 0;
 
 	while ((pkt = bus->tx_queue_head)) {
 		rc = mctp_packet_tx(bus, pkt);
@@ -828,7 +828,7 @@ int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 				  struct mctp_ctrl_cmd_set_eid *request,
 				  struct mctp_ctrl_resp_set_eid *response)
 {
-	struct mctp_bus* bus = find_bus_for_eid(mctp, dest_eid);
+	struct mctp_bus *bus = find_bus_for_eid(mctp, dest_eid);
 
 	if (!request || !response)
 		return -1;
@@ -884,7 +884,7 @@ int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 				  bool bus_owner,
 				  struct mctp_ctrl_resp_get_eid *response)
 {
-	struct mctp_bus* bus = find_bus_for_eid(mctp, dest_eid);
+	struct mctp_bus *bus = find_bus_for_eid(mctp, dest_eid);
 
 	if (response == NULL)
 		return -1;
