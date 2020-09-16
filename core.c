@@ -899,7 +899,7 @@ int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 		response->eid_set = request->eid;
 		break;
 	default: /* Reset EID and Set Discovered Flag */
-		response->completion_code = MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD;
+		response->completion_code = MCTP_CTRL_CC_ERROR_INVALID_DATA;
 	}
 	return 0;
 }
