@@ -124,6 +124,22 @@ typedef union {
 	uint8_t raw[16];
 } guid_t;
 
+#define MCTP_ENDPOINT_TYPE_SHIFT 4
+#define MCTP_ENDPOINT_TYPE_MASK 0x3
+#define MCTP_SIMPLE_ENDPOINT 0
+#define MCTP_BUS_OWNER_BRIDGE 1
+#define SET_ENDPOINT_TYPE(field, type)                                         \
+	(field |=                                                              \
+	 ((type & MCTP_ENDPOINT_TYPE_MASK) << MCTP_ENDPOINT_TYPE_SHIFT))
+
+#define MCTP_ENDPOINT_ID_TYPE_SHIFT 0
+#define MCTP_ENDPOINT_ID_TYPE_MASK 0x3
+#define MCTP_DYNAMIC_EID 0
+#define MCTP_STATIC_EID 1
+#define SET_ENDPOINT_ID_TYPE(field, type)                                      \
+	(field |=                                                              \
+	 ((type & MCTP_ENDPOINT_ID_TYPE_MASK) << MCTP_ENDPOINT_ID_TYPE_SHIFT))
+
 struct mctp_ctrl_resp_get_eid {
 	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;

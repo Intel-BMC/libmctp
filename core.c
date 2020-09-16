@@ -926,17 +926,19 @@ int mctp_ctrl_cmd_get_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 
 	if (response == NULL)
 		return -1;
+
 	response->eid = mctp_bus_get_eid(bus);
 	response->eid_type = 0;
-	if (mctp->route_policy == ROUTE_BRIDGE || bus_owner == true) {
-		response->eid_type |= (1 << 4);
-	}
+
+	if (mctp->route_policy == ROUTE_BRIDGE || bus_owner)
+		SET_ENDPOINT_TYPE(response->eid_type, MCTP_BUS_OWNER_BRIDGE);
 
 	if (bus->has_static_eid)
-		response->eid_type |= (1 << 1);
+		SET_ENDPOINT_ID_TYPE(response->eid_type, MCTP_STATIC_EID);
 
 	response->medium_data = mctp_binding_get_medium_info(bus->binding);
 	response->completion_code = MCTP_CTRL_CC_SUCCESS;
+
 	return 0;
 }
 
