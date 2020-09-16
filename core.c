@@ -883,13 +883,12 @@ int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 		if (mctp->n_busses == 1 || bus->eid == 0x0) {
 			mctp_bus_set_eid(bus, request->eid);
 			response->eid_set = request->eid;
-			MCTP_SET_EID_STATUS(MCTP_SET_EID_ACCEPTED,
-					    response->status);
-			/* TODO: fix the status field. */
+			SET_MCTP_EID_ASSIGNMENT_STATUS(response->status,
+						       MCTP_SET_EID_ACCEPTED);
 		} else {
-			MCTP_SET_EID_STATUS(MCTP_SET_EID_REJECTED,
-					    response->status);
 			response->eid_set = bus->eid;
+			SET_MCTP_EID_ASSIGNMENT_STATUS(response->status,
+						       MCTP_SET_EID_REJECTED);
 		}
 		response->completion_code = MCTP_CTRL_CC_SUCCESS;
 		break;

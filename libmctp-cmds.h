@@ -109,8 +109,12 @@ struct mctp_ctrl_cmd_discovery_notify {
 /* MCTP Set Endpoint ID response fields
  * See DSP0236 v1.3.0 Table 14.
  */
-#define MCTP_SET_EID_STATUS(status, field)                                     \
-	field = ((field)&0xcf) | ((status) << 4)
+
+#define MCTP_EID_ASSIGNMENT_STATUS_SHIFT 0x4
+#define MCTP_EID_ASSIGNMENT_STATUS_MASK 0x3
+#define SET_MCTP_EID_ASSIGNMENT_STATUS(field, status)                          \
+	(field |= ((status & MCTP_EID_ASSIGNMENT_STATUS_MASK)                  \
+		   << MCTP_EID_ASSIGNMENT_STATUS_SHIFT))
 #define MCTP_SET_EID_ACCEPTED 0x0
 #define MCTP_SET_EID_REJECTED 0x1
 typedef union {
