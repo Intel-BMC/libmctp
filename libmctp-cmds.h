@@ -59,6 +59,11 @@ struct mctp_ctrl_cmd_discovery_notify {
 	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_cmd_get_routing_table {
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
+	uint8_t entry_handle;
+} __attribute__((__packed__));
+
 #define MCTP_CTRL_HDR_MSG_TYPE 0
 #define MCTP_CTRL_HDR_FLAG_REQUEST (1 << 7)
 #define MCTP_CTRL_HDR_FLAG_DGRAM (1 << 6)
@@ -117,6 +122,18 @@ struct mctp_ctrl_cmd_discovery_notify {
 		   << MCTP_EID_ASSIGNMENT_STATUS_SHIFT))
 #define MCTP_SET_EID_ACCEPTED 0x0
 #define MCTP_SET_EID_REJECTED 0x1
+
+/* MCTP Physical Transport Binding identifiers
+ * See DSP0239 v1.7.0 Table 3.
+ */
+#define MCTP_BINDING_RESERVED 0x00
+#define MCTP_BINDING_SMBUS 0x01
+#define MCTP_BINDING_PCIE 0x02
+#define MCTP_BINDING_USB 0x03
+#define MCTP_BINDING_KCS 0x04
+#define MCTP_BINDING_SERIAL 0x05
+#define MCTP_BINDING_VEDNOR 0x06
+
 typedef union {
 	struct {
 		uint32_t data0;
@@ -143,6 +160,42 @@ typedef union {
 #define SET_ENDPOINT_ID_TYPE(field, type)                                      \
 	(field |=                                                              \
 	 ((type & MCTP_ENDPOINT_ID_TYPE_MASK) << MCTP_ENDPOINT_ID_TYPE_SHIFT))
+
+/* MCTP Routing Table entry types
+ * See DSP0236 v1.3.0 Table 27.
+ */
+#define MCTP_ROUTING_ENTRY_PORT_SHIFT 0
+#define MCTP_ROUTING_ENTRY_PORT_MASK 0x1F
+#define SET_ROUTING_ENTRY_PORT(field, port)                                    \
+	(field |= ((port & MCTP_ROUTING_ENTRY_PORT_MASK)                       \
+		   << MCTP_ROUTING_ENTRY_PORT_SHIFT))
+#define GET_ROUTING_ENTRY_PORT(field)                                          \
+	((field >> MCTP_ROUTING_ENTRY_PORT_SHIFT) &                            \
+	 MCTP_ROUTING_ENTRY_PORT_MASK)
+
+#define MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT 5
+#define MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK 0x1
+#define MCTP_DYNAMIC_ASSIGNMENT 0
+#define MCTP_STATIC_ASSIGNMENT 1
+#define SET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field, type)                         \
+	(field |= ((type & MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK)            \
+		   << MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT))
+#define GET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field)                               \
+	((field >> MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT) &                 \
+	 MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK)
+
+#define MCTP_ROUTING_ENTRY_TYPE_SHIFT 6
+#define MCTP_ROUTING_ENTRY_TYPE_MASK 0x3
+#define MCTP_ROUTING_ENTRY_ENDPOINT 0x00
+#define MCTP_ROUTING_ENTRY_BRIDGE_AND_ENDPOINTS 0x01
+#define MCTP_ROUTING_ENTRY_BRIDGE 0x02
+#define MCTP_ROUTING_ENTRY_ENDPOINTS 0x03
+#define SET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field, type)                         \
+	(field |= ((type & MCTP_ROUTING_ENTRY_TYPE_MASK)                       \
+		   << MCTP_ROUTING_ENTRY_TYPE_SHIFT))
+#define GET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field)                               \
+	((field >> MCTP_ROUTING_ENTRY_TYPE_SHIFT) &                            \
+	 MCTP_ROUTING_ENTRY_TYPE_MASK)
 
 struct mctp_ctrl_resp_get_eid {
 	struct mctp_ctrl_msg_hdr ctrl_hdr;
@@ -182,6 +235,22 @@ struct mctp_ctrl_resp_endpoint_discovery {
 	uint8_t completion_code;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_resp_get_routing_table {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	uint8_t next_entry_handle;
+	uint8_t number_of_entries;
+} __attribute__((__packed__));
+
+struct get_routing_table_entry {
+	uint8_t eid_range_size;
+	uint8_t starting_eid;
+	uint8_t entry_type;
+	uint8_t phys_transport_binding_id;
+	uint8_t phys_media_type_id;
+	uint8_t phys_address_size;
+} __attribute__((__packed__));
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length, void *msg_binding_private);
@@ -213,6 +282,10 @@ bool mctp_encode_ctrl_cmd_get_vdm_support(
 bool mctp_encode_ctrl_cmd_discovery_notify(
 	struct mctp_ctrl_cmd_discovery_notify *discovery_notify_cmd,
 	uint8_t rq_dgram_inst);
+
+bool mctp_encode_ctrl_cmd_get_routing_table(
+	struct mctp_ctrl_cmd_get_routing_table *get_routing_table_cmd,
+	uint8_t rq_dgram_inst, uint8_t entry_handle);
 
 void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 

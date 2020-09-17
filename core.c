@@ -848,6 +848,19 @@ bool mctp_encode_ctrl_cmd_discovery_notify(
 	return true;
 }
 
+bool mctp_encode_ctrl_cmd_get_routing_table(
+	struct mctp_ctrl_cmd_get_routing_table *get_routing_table_cmd,
+	uint8_t rq_dgram_inst, uint8_t entry_handle)
+{
+	if (!get_routing_table_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&get_routing_table_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_GET_ROUTING_TABLE_ENTRIES);
+	get_routing_table_cmd->entry_handle = entry_handle;
+	return true;
+}
+
 static inline mctp_eid_t mctp_bus_get_eid(struct mctp_bus *bus)
 {
 	return bus->eid;
