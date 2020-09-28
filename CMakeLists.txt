@@ -37,6 +37,11 @@ add_executable (test_serial tests/test_serial.c tests/test-utils.c)
 target_link_libraries (test_serial mctp_intel)
 add_test (NAME serial COMMAND test_serial)
 
+add_executable (test_astpcie tests/test_astpcie.c)
+target_link_options(test_astpcie PRIVATE -z muldefs)
+target_link_libraries (test_astpcie mctp_intel)
+add_test (NAME astpcie COMMAND test_astpcie)
+
 add_executable (test_cmds tests/test_cmds.c tests/test-utils.c)
 target_link_libraries (test_cmds mctp_intel)
 add_test (NAME control_commands COMMAND test_cmds)
