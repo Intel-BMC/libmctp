@@ -162,6 +162,18 @@ int mctp_astpcie_poll(struct mctp_binding_astpcie *astpcie, int timeout)
 	return 0;
 }
 
+static bool mctp_astpcie_is_routing_supported(int routing)
+{
+	switch (routing) {
+	case PCIE_ROUTE_TO_RC:
+	case PCIE_ROUTE_BY_ID:
+	case PCIE_BROADCAST_FROM_RC:
+		return true;
+	default:
+		return false;
+	}
+}
+
 int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 {
 	uint32_t data[MCTP_ASTPCIE_BINDING_DEFAULT_BUFFER];
@@ -187,6 +199,12 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 	payload_len = mctp_astpcie_rx_get_payload_size(hdr);
 
 	pkt_prv.routing = PCIE_GET_ROUTING(hdr);
+
+	if (!mctp_astpcie_is_routing_supported(pkt_prv.routing)) {
+		mctp_prerr("unsupported routing value: %d", pkt_prv.routing);
+		return -1;
+	}
+
 	pkt_prv.remote_id = PCIE_GET_REQ_ID(hdr);
 
 	pkt = mctp_pktbuf_alloc(&astpcie->binding, 0);
