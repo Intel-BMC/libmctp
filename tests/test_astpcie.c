@@ -42,6 +42,9 @@ static uint8_t rx_test_packet[][PACKET_SIZE] = {
 	  0x1a, 0xb4, 0x01, 0x00, 0x50, 0xd0, 0x00, 0x00, 0x0a, 0x00,
 	  0xff, 0x02, 0x01, 0x60, 0x00, 0x02, 0x08, 0x02, 0x07, 0x00,
 	  0x01, 0x20, 0x00, 0x02, 0x08, 0x02, 0x06, 0x01 },
+	/* negative_test_rx_routing1 */
+	{ 0x71, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
 };
 
 struct astpcie_test_ctx {
@@ -252,6 +255,17 @@ static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
 	assert(pkt_prv->routing == PCIE_ROUTE_TO_RC);
 }
 
+static void negative_test_rx_routing1(mctp_eid_t src, void *data, void *msg,
+				      size_t len, void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+
+	assert(0);
+}
+
 static void run_rx_test(mctp_rx_fn rx_fn)
 {
 	struct astpcie_test_ctx ctx;
@@ -270,6 +284,24 @@ static void run_rx_test(mctp_rx_fn rx_fn)
 	destroy_test_ctx(&ctx);
 }
 
+static void run_rx_negative_test(mctp_rx_fn rx_fn)
+{
+	struct astpcie_test_ctx ctx;
+	int rc;
+
+	init_test_ctx(&ctx);
+
+	mctp_set_rx_all(ctx.mctp, rx_fn, NULL);
+
+	rc = mctp_astpcie_poll(ctx.astpcie, 1000);
+	if (rc & POLLIN) {
+		rc = mctp_astpcie_rx(ctx.astpcie);
+		assert(rc != 0);
+	}
+
+	destroy_test_ctx(&ctx);
+}
+
 int main(void)
 {
 	mctp_set_log_stdio(MCTP_LOG_DEBUG);
@@ -281,6 +313,8 @@ int main(void)
 	run_rx_test(test_rx_remote_id2);
 	run_rx_test(test_rx_verify_payload1);
 	run_rx_test(test_rx_verify_payload2);
+
+	run_rx_negative_test(negative_test_rx_routing1);
 
 	return 0;
 }
