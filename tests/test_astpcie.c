@@ -1,366 +1,286 @@
 /* SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later */
 
-#define _GNU_SOURCE
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include <stdio.h>
 
 #include "libmctp-astpcie.h"
+#include "libmctp-cmds.h"
 #include "libmctp-log.h"
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <sys/ioctl.h>
-#include <linux/aspeed-mctp.h>
-
 #include "astpcie.h"
 
-#ifndef MCTP_HAVE_FILEIO
-#error PCIe requires FILEIO.
-#endif
+#include <linux/aspeed-mctp.h>
 
-#define TEST_EID 10
-#define TEST_OUT_EID 11
+#undef pr_fmt
+#define pr_fmt(fmt) "test_astpcie: " fmt
 
-static int file_descriptor = 3;
-int open(char *filename, int opts)
+#define PACKET_SIZE (ASPEED_MCTP_PCIE_VDM_HDR_SIZE + 64)
+
+static int stubbed_fd = 3;
+static uint16_t stubbed_bdf = 0x100;
+
+/* Packet with */
+static uint8_t rx_test_packet[][PACKET_SIZE] = {
+	/* test_rx_routing1 */
+	{ 0x73, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
+	/* test_rx_routing2 */
+	{ 0x72, 0x00, 0x10, 0x01, 0x00, 0x34, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
+	/* test_rx_routing3 */
+	{ 0x70, 0x00, 0x10, 0x01, 0x00, 0x34, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x7e, 0x8a, 0x0b },
+	/* test_rx_remote_id1 */
+	{ 0x73, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
+	/* test_rx_remote_id2 */
+	{ 0x72, 0x00, 0x10, 0x01, 0x00, 0x34, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
+	/* test_rx_verify_payload1 */
+	{ 0x73, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
+	/* test_rx_verify_payload2 */
+	{ 0x72, 0x00, 0x10, 0x06, 0x00, 0xb0, 0x20, 0x7f, 0x07, 0x00,
+	  0x1a, 0xb4, 0x01, 0x00, 0x50, 0xd0, 0x00, 0x00, 0x0a, 0x00,
+	  0xff, 0x02, 0x01, 0x60, 0x00, 0x02, 0x08, 0x02, 0x07, 0x00,
+	  0x01, 0x20, 0x00, 0x02, 0x08, 0x02, 0x06, 0x01 },
+};
+
+struct astpcie_test_ctx {
+	struct mctp *mctp;
+	struct mctp_binding_astpcie *astpcie;
+};
+
+/* Mocking of system calls */
+
+int open(const char *pathname, int flags)
 {
-	fprintf(stderr, "MOCK: %s\n", __func__);
-	return file_descriptor;
+	return stubbed_fd;
 }
 
-/* clang-format off */
-static uint8_t data_0[16+4] = { 0x70, 0x00, 0x10, 0x05
-			      , 0x11, 0x23, 0x20, 0x7F
-			      , 0x00, 0x00, 0xB4, 0x1A
-			      , 0x00, 0x0a, 0x0b, 0xc0 /* mctp_hdr */
-			      , 0xAD, 0xDE, 0x00, 0x00 /* payload + 2 pad */
-};
-
-static uint8_t data_1a[16+64] = { 0x70, 0x00, 0x10, 0x14
-				, 0x11, 0x23, 0x00, 0x7F
-				, 0x00, 0x00, 0xB4, 0x1A
-				, 0x00, 0x0a, 0x0b, 0x80 /* mctp_hdr */
-};
-static uint8_t data_1b[16+16] = { 0x70, 0x00, 0x10, 0x08
-				, 0x11, 0x23, 0x10, 0x7F
-				, 0x00, 0x00, 0xB4, 0x1A
-				, 0x00, 0x0a, 0x0b, 0x50 /* mctp_hdr */
-};
-
-static uint8_t data_2[16] = { 0x60, 0x00, 0x10, 0x14
-			    , 0x00, 0x00, 0x10, 0x7F
-			    , 0x00, 0x00, 0xB4, 0x1A
-			    , 0x01, 0x0B, 0x0a, 0xC8
-};
-
-static uint8_t data_3a[16] = { 0x63, 0x00, 0x10, 0x14
-			     , 0x01, 0x02, 0x00, 0x7F
-			     , 0x03, 0x04, 0xB4, 0x1A
-			     , 0x01, 0x0B, 0x0a, 0x88
-};
-
-static uint8_t data_3b[16] = { 0x63, 0x00, 0x10, 0x14
-			     , 0x01, 0x02, 0x20, 0x7F
-			     , 0x03, 0x04, 0xB4, 0x1A
-			     , 0x01, 0x0B, 0x0a, 0x58
-};
-/* clang-format on */
-
-/* payload ubuffer for test */
-static uint8_t payload[128];
-static size_t payload_size = sizeof(payload);
-
-static int rx_runs;
-static void mctp_rx_test(uint8_t src_eid, void *data, void *msg, size_t len,
-			 void *msg_binding_private)
+int close(int fd)
 {
-	uint8_t *buffer = msg;
-	printf("RX handler: Eid: %d, len: %zd, data: %p, msg: %p, %x\n",
-	       src_eid, len, data, msg, *(int *)msg);
-	switch (rx_runs++) {
-	case 0:
-		assert(len == 2);
-		assert(*buffer++ == 0xad);
-		assert(*buffer++ == 0xde);
+	assert(fd == stubbed_fd);
+	return 0;
+}
+
+int ioctl(int fd, unsigned long request, void *data)
+{
+	struct aspeed_mctp_get_bdf *bdf = (struct aspeed_mctp_get_bdf *)data;
+
+	assert(fd == stubbed_fd);
+
+	switch (request) {
+	case ASPEED_MCTP_IOCTL_GET_BDF:
+		bdf->bdf = stubbed_bdf;
 		break;
-	case 1:
-		assert(len == 79);
-		/* check boundaries */
-		assert(buffer[0] == 0);
-		assert(buffer[1] == 1);
-		assert(buffer[63] == 63);
-		assert(buffer[64] == 64);
-		assert(buffer[78] == 78);
-		break;
-	};
-}
-
-static void prepare_payload1()
-{
-	size_t i;
-	for (i = 16; i < sizeof(data_1a); i++) {
-		data_1a[i] = i - 16;
-	}
-	/* leave one for padding */
-	for (i = 16; i < sizeof(data_1b) - 1; i++) {
-		data_1b[i] = i - 16 + 64;
-	}
-	memset(payload, 0, sizeof(payload));
-}
-
-static void fill_payload2(int size)
-{
-	size_t i;
-	payload_size = size;
-
-	for (i = 0; i < payload_size; i++) {
-		payload[i] = (uint8_t)i;
-	}
-}
-
-/* asserts on error */
-static void check_header(uint8_t *msg, uint8_t *data)
-{
-	size_t i;
-	fprintf(stderr, "Entering %s()\n", __func__);
-	fprintf(stderr,
-		"mgs[ 0]:%02x == data[ 0]:%02x,\n"
-		"mgs[15]:%02x == data[15]:%02x.\n",
-		msg[0], data[0], msg[15], data[15]);
-
-	/* check boundaries */
-	assert(msg[0] == data[0]);
-	assert(msg[15] == data[15]);
-
-	for (i = 0; i < 16; i++) {
-		if (msg[i] != data[i]) {
-			fprintf(stderr,
-				"Data mismatch: msg[%zd] != data_1[%zd] "
-				"(%02x vs %02x)",
-				i, i, msg[i], data[i]);
-			assert(msg[i] == data[i]);
-		}
-	}
-}
-
-static void check_header2(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(sizeof(data_2) == 16);
-	check_header(msg, data_2);
-}
-
-/* asserts on error */
-static void check_payload2(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(payload_size == 63);
-	fprintf(stderr,
-		"mgs[ 0]:%02x == payload[ 0]:%02x,\n"
-		"mgs[62]:%02x == payload[62]:%02x,\n"
-		"padding: msg[63]:%02x.\n",
-		msg[0], payload[0], msg[62], payload[62], msg[63]);
-	/* check boundaries */
-	assert(msg[0] == payload[0]);
-	assert(msg[62] == payload[62]);
-	assert(msg[63] == 0x00);
-}
-
-/* asserts on error */
-static void check_header3a(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(sizeof(data_3a) == 16);
-
-	check_header(msg, data_3a);
-}
-
-/* asserts on error */
-static void check_header3b(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(sizeof(data_3b) == 16);
-
-	check_header(msg, data_3b);
-}
-
-/* asserts on error */
-static void check_payload3a(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(payload_size == 126);
-	fprintf(stderr,
-		"mgs[ 0]:%02x == payload[ 0]:%02x,\n"
-		"mgs[63]:%02x == payload[63]:%02x,\n",
-		msg[0], payload[0], msg[63], payload[63]);
-	/* check boundaries */
-	assert(msg[0] == payload[0]);
-	assert(msg[63] == payload[63]);
-}
-
-/* asserts on error */
-static void check_payload3b(uint8_t *msg)
-{
-	fprintf(stderr, "Entering %s()\n", __func__);
-	assert(payload_size == 126);
-	fprintf(stderr,
-		"mgs[ 0]:%02x == payload[64]:%02x,\n"
-		"mgs[61]:%02x == payload[64 + 61]:%02x,\n"
-		"padding: msg[62]:%02x.\n",
-		msg[0], payload[64], msg[61], payload[64 + 61], msg[62]);
-	/* check boundaries */
-	assert(msg[0] == payload[64]);
-	assert(msg[61] == payload[64 + 61]);
-}
-
-static int ioctl_index = 0;
-int ioctl(int __fd, unsigned long int __request, ...)
-{
-	va_list args;
-	fprintf(stderr, "MOCK: %s, ioctl_index = %d\n", __func__, ioctl_index);
-	assert(__fd == file_descriptor);
-	va_start(args, __request);
-	struct ioctl_interface *io = va_arg(args, struct ioctl_interface *);
-	switch (ioctl_index++) {
-	case 0:
+	default:
+		mctp_prdebug("Unrecognized ioctl");
 		assert(0);
+		break;
 	}
 
-	va_end(args);
 	return 0;
 }
 
-int close(int __fd)
+#define POLLIN 1
+
+typedef long nfds_t;
+
+struct pollfd {
+	int fd;
+	short events;
+	short revents;
+};
+
+int poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
-	fprintf(stderr, "MOCK: %s\n", __func__);
-	assert(__fd == file_descriptor);
-	return 0;
+	fds[0].revents = POLLIN;
+	return 1;
 }
 
-static int read_index;
-ssize_t read(int __fd, void *data, size_t data_size)
+ssize_t read(int fd, void *buf, size_t count)
 {
-	fprintf(stderr, "MOCK: %s\n", __func__);
-	assert(__fd == file_descriptor);
-	switch (read_index++) {
-	case 0:
-		printf("\n");
-		assert(data != NULL);
-		memcpy(data, &data_0, sizeof(data_0));
-		return sizeof(data_0);
-	case 1:
-		printf("\n");
-		assert(data != NULL);
-		memcpy(data, &data_1a, sizeof(data_1a));
-		return sizeof(data_1a);
-	case 2:
-		printf("\n");
-		assert(data != NULL);
-		memcpy(data, &data_1b, sizeof(data_1b));
-		return sizeof(data_1b);
-	}
-	return 0;
+	static int index = 0;
+
+	assert(fd == stubbed_fd);
+
+	if (count > sizeof(rx_test_packet[index]))
+		count = sizeof(rx_test_packet[index]);
+
+	memcpy(buf, &rx_test_packet[index], count);
+
+	index++;
+
+	return count;
 }
 
-static int write_index;
 ssize_t write(int __fd, void *data, size_t data_size)
 {
-	fprintf(stderr, "MOCK: %s\n", __func__);
-	assert(__fd == file_descriptor);
-	switch (write_index++) {
-	case 0:
-		check_header2(data);
-		check_payload2((uint8_t *)data + 16);
-		return (ssize_t)data_size;
-	case 1:
-		check_header3a(data);
-		check_payload3a((uint8_t *)data + 16);
-		return (ssize_t)data_size;
-	case 2:
-		check_header3b(data);
-		check_payload3b((uint8_t *)data + 16);
-		return (ssize_t)data_size;
-	}
+	static int write_index;
+
+	assert(__fd == stubbed_fd);
+
 	return 0;
 }
 
-int main(void)
+static void init_test_ctx(struct astpcie_test_ctx *ctx)
 {
-	int res;
+	struct mctp_binding_astpcie *astpcie;
 	struct mctp *mctp;
-	struct mctp_binding *binding;
-	struct mctp_binding_astpcie *pcie;
-
-	mctp_set_log_stdio(MCTP_LOG_DEBUG);
+	int rc;
 
 	mctp = mctp_init();
 	assert(mctp);
 
-	pcie = mctp_binding_astpcie_init();
-	assert(pcie);
+	astpcie = mctp_astpcie_init();
+	assert(astpcie);
+	assert(strcmp(astpcie->binding.name, "astpcie") == 0);
+	assert(astpcie->binding.version == 1);
 
-	binding = mctp_binding_astpcie_core(pcie);
-	assert(binding);
+	rc = mctp_register_bus_dynamic_eid(mctp, &astpcie->binding);
+	assert(rc == 0);
 
-	assert(strcmp(pcie->binding.name, "astpcie") == 0);
-	assert(pcie->binding.version == 1);
-	assert(pcie->binding.tx != NULL);
-	assert(pcie->binding.start != NULL);
+	ctx->mctp = mctp;
+	ctx->astpcie = astpcie;
+}
 
-	mctp_set_rx_all(mctp, mctp_rx_test, NULL);
-	res = mctp_register_bus(mctp, &pcie->binding, TEST_EID);
-	assert(res == 0);
+static void destroy_test_ctx(struct astpcie_test_ctx *ctx)
+{
+	mctp_astpcie_free(ctx->astpcie);
+	mctp_destroy(ctx->mctp);
+}
 
-	res = mctp_binding_astpcie_rx(&pcie->binding, TEST_EID, payload,
-				      sizeof(payload));
-	assert(res == 0);
-	assert(rx_runs == 1);
+static void dump_payload(uint8_t *payload, size_t len)
+{
+	char dump[5 * len];
+	int pos = 0;
+	int i;
 
-	/* prepare data */
-	prepare_payload1();
+	for (i = 0; i < len; i++)
+		pos += sprintf(dump + pos, "0x%.2x ", payload[i]);
 
-	res = mctp_binding_astpcie_rx(&pcie->binding, TEST_EID, payload,
-				      sizeof(payload));
-	assert(res == 0);
-	assert(rx_runs == 1);
+	mctp_prdebug("payload: %s", dump);
+}
 
-	res = mctp_binding_astpcie_rx(&pcie->binding, TEST_EID, payload,
-				      sizeof(payload));
-	assert(res == 0);
-	assert(rx_runs == 2);
+static void test_rx_verify_payload1(mctp_eid_t src, void *data, void *msg,
+				    size_t len, void *ext)
+{
+	uint8_t expected_data[] = { 0x00, 0x8a, 0x0b };
+	int rc;
 
-	/* prepare data */
-	fill_payload2(63);
+	mctp_prdebug("rx payload len: 0x%.2lx", len);
 
-	/* queue */
-	res = mctp_message_tx(mctp, TEST_OUT_EID, payload, payload_size, NULL);
+	assert(len == 3);
 
-	/* flush */
-	mctp_binding_set_tx_enabled(&pcie->binding, true);
+	dump_payload(msg, len);
 
-	/* prepare data */
-	fill_payload2(126);
+	rc = memcmp(expected_data, msg, len);
+	assert(rc == 0);
+}
 
-	struct pcie_request_extra extra = { PCIE_BROADCAST_FROM_ROOT,
-					    { 0x01, 0x02 },
-					    { 0x03, 0x04 } };
-	/* queue and then flush */
-	res = mctp_message_tx(mctp, TEST_OUT_EID, payload, payload_size,
-			      &extra);
+static void test_rx_verify_payload2(mctp_eid_t src, void *data, void *msg,
+				    size_t len, void *ext)
+{
+	uint8_t expected_data[] = { 0x00, 0x00, 0x0a, 0x00, 0xff, 0x02,
+				    0x01, 0x60, 0x00, 0x02, 0x08, 0x02,
+				    0x07, 0x00, 0x01, 0x20, 0x00, 0x02,
+				    0x08, 0x02, 0x06, 0x01 };
+	int rc;
 
-	/* cleanup */
-	mctp_binding_astpcie_free(pcie);
-	mctp_destroy(mctp);
+	mctp_prdebug("rx payload len: 0x%.2lx", len);
+
+	assert(len == 22);
+
+	dump_payload(msg, len);
+
+	rc = memcmp(expected_data, msg, len);
+
+	assert(rc == 0);
+}
+
+static void test_rx_remote_id1(mctp_eid_t src, void *data, void *msg,
+			       size_t len, void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx remote id: 0x%.2x", pkt_prv->remote_id);
+
+	assert(pkt_prv->remote_id == 0x92);
+}
+
+static void test_rx_remote_id2(mctp_eid_t src, void *data, void *msg,
+			       size_t len, void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx remote id: 0x%.2x", pkt_prv->remote_id);
+
+	assert(pkt_prv->remote_id == 0x34);
+}
+
+static void test_rx_routing1(mctp_eid_t src, void *data, void *msg, size_t len,
+			     void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+
+	assert(pkt_prv->routing == PCIE_BROADCAST_FROM_RC);
+}
+
+static void test_rx_routing2(mctp_eid_t src, void *data, void *msg, size_t len,
+			     void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+
+	assert(pkt_prv->routing == PCIE_ROUTE_BY_ID);
+}
+
+static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
+			     void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+
+	assert(pkt_prv->routing == PCIE_ROUTE_TO_RC);
+}
+
+static void run_rx_test(mctp_rx_fn rx_fn)
+{
+	struct astpcie_test_ctx ctx;
+	int rc;
+
+	init_test_ctx(&ctx);
+
+	mctp_set_rx_all(ctx.mctp, rx_fn, NULL);
+
+	rc = mctp_astpcie_poll(ctx.astpcie, 1000);
+	if (rc & POLLIN) {
+		rc = mctp_astpcie_rx(ctx.astpcie);
+		assert(rc == 0);
+	}
+
+	destroy_test_ctx(&ctx);
+}
+
+int main(void)
+{
+	mctp_set_log_stdio(MCTP_LOG_DEBUG);
+
+	run_rx_test(test_rx_routing1);
+	run_rx_test(test_rx_routing2);
+	run_rx_test(test_rx_routing3);
+	run_rx_test(test_rx_remote_id1);
+	run_rx_test(test_rx_remote_id2);
+	run_rx_test(test_rx_verify_payload1);
+	run_rx_test(test_rx_verify_payload2);
 
 	return 0;
 }
