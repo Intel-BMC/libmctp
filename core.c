@@ -570,7 +570,7 @@ static void flush_message(struct mctp_bus *bus)
 {
 	struct mctp_pktbuf *pkt;
 
-	while (pkt = bus->tx_queue_head) {
+	while ((pkt = bus->tx_queue_head)) {
 		bus->tx_queue_head = pkt->next;
 		//If EOM of the message is reached then stop flushing
 		if (mctp_pktbuf_hdr(pkt)->flags_seq_tag & MCTP_HDR_FLAG_EOM) {
