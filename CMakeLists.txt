@@ -57,5 +57,9 @@ add_test (NAME binding_private COMMAND test_binding_private)
 add_executable (mctp_astpcie_discovery utils/mctp-astpcie-discovery.c)
 target_link_libraries (mctp_astpcie_discovery mctp_intel)
 
+add_executable (test_encode_decode tests/test_encode_decode.c)
+target_link_libraries (test_encode_decode mctp_intel)
+add_test (NAME encode_decode COMMAND test_encode_decode)
+
 install (TARGETS mctp_intel DESTINATION lib)
 install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
