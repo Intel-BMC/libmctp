@@ -64,11 +64,6 @@ struct mctp_astpcie_pkt_private {
 #endif
 } __attribute__((__packed__));
 
-/* TODO: Remove, when libmctp callers use the new naming */
-#define mctp_binding_astpcie_init mctp_astpcie_init
-#define mctp_binding_astpcie_core mctp_astpcie_core
-#define mctp_binding_astpcie_free mctp_astpcie_free
-
 #ifdef __cplusplus
 }
 #endif
