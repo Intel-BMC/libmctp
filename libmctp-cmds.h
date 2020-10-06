@@ -190,10 +190,10 @@ typedef union {
 #define MCTP_ROUTING_ENTRY_BRIDGE_AND_ENDPOINTS 0x01
 #define MCTP_ROUTING_ENTRY_BRIDGE 0x02
 #define MCTP_ROUTING_ENTRY_ENDPOINTS 0x03
-#define SET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field, type)                         \
+#define SET_ROUTING_ENTRY_TYPE(field, type)                                    \
 	(field |= ((type & MCTP_ROUTING_ENTRY_TYPE_MASK)                       \
 		   << MCTP_ROUTING_ENTRY_TYPE_SHIFT))
-#define GET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field)                               \
+#define GET_ROUTING_ENTRY_TYPE(field)                                          \
 	((field >> MCTP_ROUTING_ENTRY_TYPE_SHIFT) &                            \
 	 MCTP_ROUTING_ENTRY_TYPE_MASK)
 
