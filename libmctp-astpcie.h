@@ -62,7 +62,7 @@ struct mctp_astpcie_pkt_private {
 	 */
 	uint8_t flags_seq_tag;
 #endif
-};
+} __attribute__((__packed__));
 
 /* TODO: Remove, when libmctp callers use the new naming */
 #define mctp_binding_astpcie_init mctp_astpcie_init
