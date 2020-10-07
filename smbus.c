@@ -238,6 +238,14 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		return 0;
 	}
 
+	else if (smbus_hdr_rx->byte_count != (len - sizeof(*smbus_hdr_rx))) {
+		// Got an incorrectly sized payload
+		mctp_prerr("Got smbus payload sized %lu, expecting %d",
+			   len - sizeof(*smbus_hdr_rx),
+			   smbus_hdr_rx->byte_count);
+		return 0;
+	}
+
 	smbus_hdr_rx = (void *)smbus->rxbuf;
 
 	if (smbus_hdr_rx->destination_slave_address !=
@@ -251,14 +259,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		mctp_prerr("Got bad command code %d",
 			   smbus_hdr_rx->command_code);
 		// Not a payload intended for us
-		return 0;
-	}
-
-	if (smbus_hdr_rx->byte_count != (len - sizeof(*smbus_hdr_rx))) {
-		// Got an incorrectly sized payload
-		mctp_prerr("Got smbus payload sized %d, expecting %d",
-			   smbus_hdr_rx->byte_count,
-			   len - sizeof(*smbus_hdr_rx));
 		return 0;
 	}
 
