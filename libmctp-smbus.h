@@ -51,8 +51,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus);
 void mctp_smbus_free(struct mctp_binding_smbus *smbus);
 int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd);
 int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd);
-void mctp_binding_set_slave_addr_callback(int (*slaveAddrCallback)(uint8_t,
-								   uint8_t *));
 #ifdef __cplusplus
 }
 #endif

@@ -149,13 +149,6 @@ static int mctp_smbus_unhold_bus(const uint8_t source_addr)
 }
 #endif // I2C_M_HOLD
 
-int (*getSlaveAddrCallback)(uint8_t, uint8_t *) = 0;
-void mctp_binding_set_slave_addr_callback(int (*slaveAddrCallback)(uint8_t,
-								   uint8_t *))
-{
-	getSlaveAddrCallback = slaveAddrCallback;
-}
-
 static int mctp_binding_smbus_tx(struct mctp_binding *b,
 				 struct mctp_pktbuf *pkt)
 {
