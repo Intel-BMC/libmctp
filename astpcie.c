@@ -71,8 +71,10 @@ static int mctp_astpcie_start(struct mctp_binding *b)
 	rc = mctp_astpcie_open(astpcie);
 	if (!rc)
 		rc = mctp_astpcie_get_bdf(astpcie);
+	if (rc)
+		return -errno;
 
-	return rc;
+	return 0;
 }
 
 static uint8_t mctp_astpcie_tx_get_pad_len(struct mctp_pktbuf *pkt)
