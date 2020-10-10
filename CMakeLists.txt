@@ -6,8 +6,6 @@ add_definitions (-DMCTP_LOG_STDERR)
 add_definitions (-DMCTP_HAVE_FILEIO)
 add_definitions (-DMCTP_HAVE_STDIO)
 add_definitions (-DMCTP_DEFAULT_ALLOC)
-# TODO: Remove, when API for response is added
-add_definitions (-DMCTP_ASTPCIE_RESPONSE_WA)
 
 add_library (mctp_intel STATIC alloc.c astlpc.c core.c log.c libmctp.h serial.c astpcie.c smbus.c)
 

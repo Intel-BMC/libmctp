@@ -137,9 +137,6 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 		return;
 	}
 
-#ifdef MCTP_ASTPCIE_RESPONSE_WA
-	pkt_prv->flags_seq_tag &= ~(MCTP_HDR_FLAG_TO);
-#endif
 	mctp_binding_set_tx_enabled(ctx->astpcie_binding, true);
 	rc = mctp_message_tx(ctx->mctp, src, &resp, resp_len, false, tag,
 			     (void *)pkt_prv);
@@ -193,10 +190,6 @@ static void discovery_with_notify_flow(struct mctp_binding_astpcie *astpcie,
 
 	pkt_prv.routing = PCIE_ROUTE_TO_RC;
 	pkt_prv.remote_id = 0xffff;
-
-#ifdef MCTP_ASTPCIE_RESPONSE_WA
-	pkt_prv.flags_seq_tag |= MCTP_HDR_FLAG_TO;
-#endif
 
 	mctp_binding_set_tx_enabled(ctx->astpcie_binding, true);
 	rc = mctp_message_tx(ctx->mctp, 0x00, &req,
