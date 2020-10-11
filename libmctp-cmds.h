@@ -118,8 +118,8 @@ struct mctp_ctrl_cmd_get_routing_table {
 #define MCTP_EID_ASSIGNMENT_STATUS_SHIFT 0x4
 #define MCTP_EID_ASSIGNMENT_STATUS_MASK 0x3
 #define SET_MCTP_EID_ASSIGNMENT_STATUS(field, status)                          \
-	(field |= ((status & MCTP_EID_ASSIGNMENT_STATUS_MASK)                  \
-		   << MCTP_EID_ASSIGNMENT_STATUS_SHIFT))
+	((field) |= (((status)&MCTP_EID_ASSIGNMENT_STATUS_MASK)                \
+		     << MCTP_EID_ASSIGNMENT_STATUS_SHIFT))
 #define MCTP_SET_EID_ACCEPTED 0x0
 #define MCTP_SET_EID_REJECTED 0x1
 
@@ -150,16 +150,16 @@ typedef union {
 #define MCTP_SIMPLE_ENDPOINT 0
 #define MCTP_BUS_OWNER_BRIDGE 1
 #define SET_ENDPOINT_TYPE(field, type)                                         \
-	(field |=                                                              \
-	 ((type & MCTP_ENDPOINT_TYPE_MASK) << MCTP_ENDPOINT_TYPE_SHIFT))
+	((field) |=                                                            \
+	 (((type)&MCTP_ENDPOINT_TYPE_MASK) << MCTP_ENDPOINT_TYPE_SHIFT))
 
 #define MCTP_ENDPOINT_ID_TYPE_SHIFT 0
 #define MCTP_ENDPOINT_ID_TYPE_MASK 0x3
 #define MCTP_DYNAMIC_EID 0
 #define MCTP_STATIC_EID 1
 #define SET_ENDPOINT_ID_TYPE(field, type)                                      \
-	(field |=                                                              \
-	 ((type & MCTP_ENDPOINT_ID_TYPE_MASK) << MCTP_ENDPOINT_ID_TYPE_SHIFT))
+	((field) |=                                                            \
+	 (((type)&MCTP_ENDPOINT_ID_TYPE_MASK) << MCTP_ENDPOINT_ID_TYPE_SHIFT))
 
 /* MCTP Routing Table entry types
  * See DSP0236 v1.3.0 Table 27.
@@ -167,10 +167,10 @@ typedef union {
 #define MCTP_ROUTING_ENTRY_PORT_SHIFT 0
 #define MCTP_ROUTING_ENTRY_PORT_MASK 0x1F
 #define SET_ROUTING_ENTRY_PORT(field, port)                                    \
-	(field |= ((port & MCTP_ROUTING_ENTRY_PORT_MASK)                       \
-		   << MCTP_ROUTING_ENTRY_PORT_SHIFT))
+	((field) |= (((port)&MCTP_ROUTING_ENTRY_PORT_MASK)                     \
+		     << MCTP_ROUTING_ENTRY_PORT_SHIFT))
 #define GET_ROUTING_ENTRY_PORT(field)                                          \
-	((field >> MCTP_ROUTING_ENTRY_PORT_SHIFT) &                            \
+	(((field) >> MCTP_ROUTING_ENTRY_PORT_SHIFT) &                          \
 	 MCTP_ROUTING_ENTRY_PORT_MASK)
 
 #define MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT 5
@@ -178,10 +178,10 @@ typedef union {
 #define MCTP_DYNAMIC_ASSIGNMENT 0
 #define MCTP_STATIC_ASSIGNMENT 1
 #define SET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field, type)                         \
-	(field |= ((type & MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK)            \
-		   << MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT))
+	((field) |= (((type)&MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK)          \
+		     << MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT))
 #define GET_ROUTING_ENTRY_ASSIGNMENT_TYPE(field)                               \
-	((field >> MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT) &                 \
+	(((field) >> MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_SHIFT) &               \
 	 MCTP_ROUTING_ENTRY_ASSIGNMENT_TYPE_MASK)
 
 #define MCTP_ROUTING_ENTRY_TYPE_SHIFT 6
@@ -191,10 +191,10 @@ typedef union {
 #define MCTP_ROUTING_ENTRY_BRIDGE 0x02
 #define MCTP_ROUTING_ENTRY_ENDPOINTS 0x03
 #define SET_ROUTING_ENTRY_TYPE(field, type)                                    \
-	(field |= ((type & MCTP_ROUTING_ENTRY_TYPE_MASK)                       \
-		   << MCTP_ROUTING_ENTRY_TYPE_SHIFT))
+	((field) |= (((type)&MCTP_ROUTING_ENTRY_TYPE_MASK)                     \
+		     << MCTP_ROUTING_ENTRY_TYPE_SHIFT))
 #define GET_ROUTING_ENTRY_TYPE(field)                                          \
-	((field >> MCTP_ROUTING_ENTRY_TYPE_SHIFT) &                            \
+	(((field) >> MCTP_ROUTING_ENTRY_TYPE_SHIFT) &                          \
 	 MCTP_ROUTING_ENTRY_TYPE_MASK)
 
 struct mctp_ctrl_resp_get_eid {

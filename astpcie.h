@@ -69,7 +69,7 @@ struct mctp_pcie_hdr {
 	((x->fmt_type >> PCIE_HDR_ROUTING_SHIFT) & PCIE_HDR_ROUTING_MASK)
 #define PCIE_SET_ROUTING(x, val)                                               \
 	(x->fmt_type |=                                                        \
-	 ((val & PCIE_HDR_ROUTING_MASK) << PCIE_HDR_ROUTING_SHIFT))
+	 (((val)&PCIE_HDR_ROUTING_MASK) << PCIE_HDR_ROUTING_SHIFT))
 
 #define PCIE_HDR_DATA_LEN_SHIFT 0
 #define PCIE_HDR_DATA_LEN_MASK 0xff03
@@ -90,7 +90,7 @@ struct mctp_pcie_hdr {
 #define PCIE_GET_PAD_LEN(x)                                                    \
 	((x->tag >> PCIE_HDR_PAD_LEN_SHIFT) & PCIE_HDR_PAD_LEN_MASK)
 #define PCIE_SET_PAD_LEN(x, val)                                               \
-	(x->tag |= ((val & PCIE_HDR_PAD_LEN_MASK) << PCIE_HDR_PAD_LEN_SHIFT))
+	(x->tag |= (((val)&PCIE_HDR_PAD_LEN_MASK) << PCIE_HDR_PAD_LEN_SHIFT))
 
 #define PCIE_GET_TARGET_ID(x) (be16toh(x->target))
 #define PCIE_SET_TARGET_ID(x, val) (x->target |= (htobe16(val)))
