@@ -111,7 +111,7 @@ int main(void)
 
 	/* Transmit a message from A to B */
 	rc = mctp_message_tx(scenario[0].mctp, 9, mctp_msg_src,
-			     sizeof(mctp_msg_src), NULL);
+			     sizeof(mctp_msg_src), true, 0, NULL);
 	assert(rc == 0);
 
 	/* Read the message at B from A */

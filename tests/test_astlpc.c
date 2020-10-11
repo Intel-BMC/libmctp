@@ -187,7 +187,7 @@ int main(void)
 	mmio.kcs[MCTP_ASTLPC_KCS_REG_STATUS] &= ~KCS_STATUS_OBF;
 
 	/* BMC sends a message */
-	rc = mctp_message_tx(mctp, 9, msg, sizeof(msg), NULL);
+	rc = mctp_message_tx(mctp, 9, msg, sizeof(msg), true, 0, NULL);
 	assert(rc == 0 || rc == TX_DISABLED_ERR);
 
 	/* Host receives a message */

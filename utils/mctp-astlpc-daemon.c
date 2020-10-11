@@ -29,7 +29,7 @@ static void tx_message(struct ctx *ctx, mctp_eid_t eid, void *msg, size_t len)
 
 	fprintf(stderr, "TX: dest EID 0x%02x: %zd bytes, first byte [0x%02x]\n",
 		eid, len, type);
-	mctp_message_tx(ctx->mctp, eid, msg, len);
+	mctp_message_tx(ctx->mctp, eid, msg, len, true, 0, NULL);
 }
 
 static void rx_message(uint8_t eid, void *data, void *msg, size_t len)

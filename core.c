@@ -78,7 +78,8 @@ struct mctp {
 
 static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 				  mctp_eid_t src, mctp_eid_t dest, void *msg,
-				  size_t msg_len, void *msg_binding_private);
+				  size_t len, bool tag_owner, uint8_t tag,
+				  void *msg_binding_private);
 
 /*
  * Receive the complete MCTP message and route it.
@@ -471,7 +472,7 @@ static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 				continue;
 
 			mctp_message_tx_on_bus(mctp, dest_bus, src, dest, buf,
-					       len, NULL);
+					       len, tag_owner, tag, NULL);
 		}
 	}
 }
@@ -652,7 +653,8 @@ void mctp_binding_set_tx_enabled(struct mctp_binding *binding, bool enable)
 
 static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 				  mctp_eid_t src, mctp_eid_t dest, void *msg,
-				  size_t msg_len, void *msg_binding_private)
+				  size_t msg_len, bool tag_owner, uint8_t tag,
+				  void *msg_binding_private)
 {
 	size_t max_payload_len, payload_len, p;
 	struct mctp_pktbuf *pkt;
@@ -684,8 +686,10 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 		hdr->ver = bus->binding->version & 0xf;
 		hdr->dest = dest;
 		hdr->src = src;
-		hdr->flags_seq_tag =
-			MCTP_HDR_FLAG_TO | (0 << MCTP_HDR_TAG_SHIFT);
+		hdr->flags_seq_tag = 0;
+		MCTP_HDR_SET_TAG(hdr->flags_seq_tag, tag);
+		if (tag_owner)
+			hdr->flags_seq_tag |= MCTP_HDR_FLAG_TO;
 
 		if (i == 0)
 			hdr->flags_seq_tag |= MCTP_HDR_FLAG_SOM;
@@ -711,14 +715,14 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 	return mctp_send_tx_queue(bus);
 }
 
-int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg,
-		    size_t msg_len, void *msg_binding_private)
+int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg, size_t len,
+		    bool tag_owner, uint8_t tag, void *msg_binding_private)
 {
 	struct mctp_bus *bus;
 
 	bus = find_bus_for_eid(mctp, eid);
-	return mctp_message_tx_on_bus(mctp, bus, bus->eid, eid, msg, msg_len,
-				      msg_binding_private);
+	return mctp_message_tx_on_bus(mctp, bus, bus->eid, eid, msg, len,
+				      tag_owner, tag, msg_binding_private);
 }
 
 static inline bool mctp_ctrl_cmd_is_control(struct mctp_ctrl_msg_hdr *hdr)

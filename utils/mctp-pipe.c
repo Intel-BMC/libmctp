@@ -84,7 +84,8 @@ int main(void)
 			} else if (rc < 0) {
 				err(EXIT_FAILURE, "read");
 			} else {
-				mctp_message_tx(mctp[0], eids[1], buf, rc);
+				mctp_message_tx(mctp[0], eids[1], buf, true, 0,
+						rc);
 			}
 		}
 

@@ -59,7 +59,7 @@ struct ctx {
 static void tx_message(struct ctx *ctx, mctp_eid_t eid, void *msg, size_t len,
 		       void *prv)
 {
-	mctp_message_tx(ctx->mctp, eid, msg, len, NULL);
+	mctp_message_tx(ctx->mctp, eid, msg, len, true, 0, NULL);
 }
 
 static void client_remove_inactive(struct ctx *ctx)

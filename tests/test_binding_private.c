@@ -105,7 +105,8 @@ void test_null_prv_data(void)
 	assert(b1);
 
 	mctp_binding_test_register_bus(b1, mctp, TEST_EID);
-	mctp_message_tx(mctp, TEST_EID, (void *)payload, sizeof(payload), NULL);
+	mctp_message_tx(mctp, TEST_EID, (void *)payload, sizeof(payload), true,
+			0, NULL);
 	mctp_binding_test_rx_raw(b1, payload, sizeof(payload), NULL);
 
 	mctp_binding_test_destroy(b1);
@@ -130,8 +131,8 @@ void test_typical_prv_data(void)
 	fill_test_binding_pvt_data(test_binding_pvt, binding_pvt_size);
 
 	mctp_binding_test_register_bus(b2, mctp, TEST_EID);
-	mctp_message_tx(mctp, TEST_EID, (void *)payload, sizeof(payload),
-			test_binding_pvt);
+	mctp_message_tx(mctp, TEST_EID, (void *)payload, sizeof(payload), true,
+			0, test_binding_pvt);
 	mctp_binding_test_rx_raw(b2, payload, sizeof(payload),
 				 test_binding_pvt);
 
@@ -170,7 +171,7 @@ void test_prv_data_deallocated(void)
 			local_binding_pvt[i] = test_binding_pvt[i];
 
 		mctp_message_tx(mctp, TEST_EID, (void *)payload,
-				sizeof(payload), local_binding_pvt);
+				sizeof(payload), true, 0, local_binding_pvt);
 
 		/* local_binding_pvt goes out of scope here */
 	}
