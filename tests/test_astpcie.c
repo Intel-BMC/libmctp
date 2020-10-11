@@ -42,6 +42,9 @@ static uint8_t rx_test_packet[][PACKET_SIZE] = {
 	  0x1a, 0xb4, 0x01, 0x00, 0x50, 0xd0, 0x00, 0x00, 0x0a, 0x00,
 	  0xff, 0x02, 0x01, 0x60, 0x00, 0x02, 0x08, 0x02, 0x07, 0x00,
 	  0x01, 0x20, 0x00, 0x02, 0x08, 0x02, 0x06, 0x01 },
+	/* test_rx_tag */
+	{ 0x72, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
+	  0xb4, 0x01, 0xff, 0x50, 0xdf, 0x00, 0x8a, 0x0b },
 	/* negative_test_rx_routing1 */
 	{ 0x71, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x01, 0x00, 0x1a,
 	  0xb4, 0x01, 0xff, 0x50, 0xd9, 0x00, 0x8a, 0x0b },
@@ -165,7 +168,8 @@ static void dump_payload(uint8_t *payload, size_t len)
 }
 
 static void test_rx_verify_payload1(mctp_eid_t src, void *data, void *msg,
-				    size_t len, void *ext)
+				    size_t len, bool tag_owner, uint8_t tag,
+				    void *ext)
 {
 	uint8_t expected_data[] = { 0x00, 0x8a, 0x0b };
 	int rc;
@@ -181,7 +185,8 @@ static void test_rx_verify_payload1(mctp_eid_t src, void *data, void *msg,
 }
 
 static void test_rx_verify_payload2(mctp_eid_t src, void *data, void *msg,
-				    size_t len, void *ext)
+				    size_t len, bool tag_owner, uint8_t tag,
+				    void *ext)
 {
 	uint8_t expected_data[] = { 0x00, 0x00, 0x0a, 0x00, 0xff, 0x02,
 				    0x01, 0x60, 0x00, 0x02, 0x08, 0x02,
@@ -201,7 +206,8 @@ static void test_rx_verify_payload2(mctp_eid_t src, void *data, void *msg,
 }
 
 static void test_rx_remote_id1(mctp_eid_t src, void *data, void *msg,
-			       size_t len, void *ext)
+			       size_t len, bool tag_owner, uint8_t tag,
+			       void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -212,7 +218,8 @@ static void test_rx_remote_id1(mctp_eid_t src, void *data, void *msg,
 }
 
 static void test_rx_remote_id2(mctp_eid_t src, void *data, void *msg,
-			       size_t len, void *ext)
+			       size_t len, bool tag_owner, uint8_t tag,
+			       void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -223,7 +230,7 @@ static void test_rx_remote_id2(mctp_eid_t src, void *data, void *msg,
 }
 
 static void test_rx_routing1(mctp_eid_t src, void *data, void *msg, size_t len,
-			     void *ext)
+			     bool tag_owner, uint8_t tag, void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -234,7 +241,7 @@ static void test_rx_routing1(mctp_eid_t src, void *data, void *msg, size_t len,
 }
 
 static void test_rx_routing2(mctp_eid_t src, void *data, void *msg, size_t len,
-			     void *ext)
+			     bool tag_owner, uint8_t tag, void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -245,7 +252,7 @@ static void test_rx_routing2(mctp_eid_t src, void *data, void *msg, size_t len,
 }
 
 static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
-			     void *ext)
+			     bool tag_owner, uint8_t tag, void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -255,8 +262,20 @@ static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
 	assert(pkt_prv->routing == PCIE_ROUTE_TO_RC);
 }
 
+static void test_rx_tag(mctp_eid_t src, void *data, void *msg, size_t len,
+			bool tag_owner, uint8_t tag, void *ext)
+{
+	struct mctp_astpcie_pkt_private *pkt_prv =
+		(struct mctp_astpcie_pkt_private *)ext;
+
+	mctp_prdebug("rx tag: 0x%.2x", tag);
+
+	assert(tag == 7);
+}
+
 static void negative_test_rx_routing1(mctp_eid_t src, void *data, void *msg,
-				      size_t len, void *ext)
+				      size_t len, bool tag_owner, uint8_t tag,
+				      void *ext)
 {
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
@@ -313,6 +332,7 @@ int main(void)
 	run_rx_test(test_rx_remote_id2);
 	run_rx_test(test_rx_verify_payload1);
 	run_rx_test(test_rx_verify_payload2);
+	run_rx_test(test_rx_tag);
 
 	run_rx_negative_test(negative_test_rx_routing1);
 

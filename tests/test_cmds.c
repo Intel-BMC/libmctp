@@ -23,7 +23,7 @@ struct msg_response {
 };
 
 void control_message_callback(mctp_eid_t src, void *data, void *buf, size_t len,
-			      void *prv)
+			      bool tag_owner, uint8_t tag, void *prv)
 {
 	struct mctp_ctrl_msg_hdr *msg_hdr = buf;
 	printf("Control message received - command code: 0x%x\n",
@@ -34,7 +34,8 @@ void control_message_callback(mctp_eid_t src, void *data, void *buf, size_t len,
 }
 
 void control_message_transport_callback(mctp_eid_t src, void *data, void *buf,
-					size_t len, void *prv)
+					size_t len, bool tag_owner, uint8_t tag,
+					void *prv)
 {
 	struct mctp_ctrl_msg_hdr *msg_hdr = buf;
 	printf("Transport control message received - command code: 0x%X\n",

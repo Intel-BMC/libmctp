@@ -39,7 +39,7 @@ int mctp_binding_test_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 }
 
 void mctp_rx_message(uint8_t src_eid, void *data, void *msg, size_t len,
-		     void *binding_pvt)
+		     bool tag_owner, uint8_t tag, void *binding_pvt)
 {
 	assert(src_eid == TEST_TARGET_EID);
 

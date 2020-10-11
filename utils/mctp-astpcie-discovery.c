@@ -83,7 +83,8 @@ static void discovery_handle_notify_resp(void)
 }
 
 static void rx_control_message(mctp_eid_t src, void *data, void *msg,
-			       size_t len, void *ext)
+			       size_t len, bool tag_owner, uint8_t tag,
+			       void *ext)
 {
 	struct mctp_ctrl_req *req = (struct mctp_ctrl_req *)msg;
 	struct mctp_astpcie_pkt_private *pkt_prv =
@@ -145,7 +146,7 @@ static void rx_control_message(mctp_eid_t src, void *data, void *msg,
 }
 
 static void rx_message(mctp_eid_t src, void *data, void *msg, size_t len,
-		       void *msg_binding_private)
+		       bool tag_owner, uint8_t tag, void *msg_binding_private)
 {
 	struct mctp_ctrl_resp *resp = (struct mctp_ctrl_resp *)msg;
 	uint8_t cmd = resp->hdr.command_code;

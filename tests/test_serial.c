@@ -43,7 +43,7 @@ uint8_t mctp_msg_src[2 * MCTP_BTU];
 static bool seen;
 
 static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
-		       void *prv)
+		       bool tag_owner, uint8_t tag, void *prv)
 {
 	uint8_t type;
 

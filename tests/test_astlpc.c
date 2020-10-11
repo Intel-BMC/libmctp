@@ -125,7 +125,7 @@ int mctp_astlpc_mmio_lpc_write(void *data, void *buf, long offset, size_t len)
 }
 
 static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
-		       void *prv)
+		       bool tag_owner, uint8_t tag, void *prv)
 {
 	uint8_t type;
 

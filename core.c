@@ -33,6 +33,7 @@ struct mctp_bus {
 struct mctp_msg_ctx {
 	uint8_t src;
 	uint8_t dest;
+	bool tag_owner;
 	uint8_t tag;
 	uint8_t last_seq;
 	void *buf;
@@ -85,8 +86,8 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
  *     'buf' is not NULL.
  */
 static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
-		    mctp_eid_t dest, void *buf, size_t len,
-		    void *msg_binding_private);
+		    mctp_eid_t dest, void *buf, size_t len, bool tag_owner,
+		    uint8_t tag, void *msg_binding_private);
 
 struct mctp_pktbuf *mctp_pktbuf_alloc(struct mctp_binding *binding, size_t len)
 {
@@ -189,9 +190,12 @@ static bool mctp_msg_ctx_match(struct mctp_msg_ctx *ctx1,
 
 /* Message reassembly */
 static struct mctp_msg_ctx *mctp_msg_ctx_lookup(struct mctp *mctp, uint8_t src,
-						uint8_t dest, uint8_t tag)
+						uint8_t dest, bool tag_owner,
+						uint8_t tag)
 {
-	struct mctp_msg_ctx ctx = { .src = src, .dest = dest, .tag = tag };
+	struct mctp_msg_ctx ctx = {
+		.src = src, .dest = dest, .tag_owner = tag_owner, .tag = tag
+	};
 	unsigned int i;
 
 	/* @todo: better lookup, if we add support for more outstanding
@@ -220,13 +224,15 @@ static struct mctp_msg_ctx *mctp_msg_ctx_find_free(struct mctp *mctp)
 }
 
 static struct mctp_msg_ctx *mctp_msg_ctx_create(struct mctp *mctp, uint8_t src,
-						uint8_t dest, uint8_t tag)
+						uint8_t dest, bool tag_owner,
+						uint8_t tag)
 {
 	struct mctp_msg_ctx *ctx = mctp_msg_ctx_find_free(mctp);
 
 	if (ctx) {
 		ctx->src = src;
 		ctx->dest = dest;
+		ctx->tag_owner = tag_owner;
 		ctx->tag = tag;
 		ctx->buf_size = 0;
 	}
@@ -424,8 +430,8 @@ static inline bool mctp_ctrl_msg_is_request(void *buf, size_t len)
 }
 
 static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
-		    mctp_eid_t dest, void *buf, size_t len,
-		    void *msg_binding_private)
+		    mctp_eid_t dest, void *buf, size_t len, bool tag_owner,
+		    uint8_t tag, void *msg_binding_private)
 {
 	assert(buf != NULL);
 
@@ -444,14 +450,15 @@ static void mctp_rx(struct mctp *mctp, struct mctp_bus *bus, mctp_eid_t src,
 			 * handle it in the default callback.
 			 */
 				if (mctp_ctrl_handle_msg(mctp, bus, src, dest,
-							 buf, len,
+							 buf, len, tag_owner,
+							 tag,
 							 msg_binding_private))
 					return;
 			}
 		}
 		if (mctp->message_rx)
 			mctp->message_rx(src, mctp->message_rx_data, buf, len,
-					 msg_binding_private);
+					 tag_owner, tag, msg_binding_private);
 		return;
 	}
 
@@ -476,6 +483,7 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 	uint8_t flags, exp_seq, seq, tag;
 	struct mctp_msg_ctx *ctx;
 	struct mctp_hdr *hdr;
+	bool tag_owner;
 	size_t len;
 	void *p;
 	int rc;
@@ -490,9 +498,10 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 	    hdr->dest != MCTP_EID_NULL && hdr->dest != MCTP_EID_BROADCAST)
 		goto out;
 
+	tag_owner = hdr->flags_seq_tag & MCTP_HDR_FLAG_TO;
 	flags = hdr->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
-	tag = (hdr->flags_seq_tag >> MCTP_HDR_TAG_SHIFT) & MCTP_HDR_TAG_MASK;
-	seq = (hdr->flags_seq_tag >> MCTP_HDR_SEQ_SHIFT) & MCTP_HDR_SEQ_MASK;
+	tag = MCTP_HDR_GET_TAG(hdr->flags_seq_tag);
+	seq = MCTP_HDR_GET_SEQ(hdr->flags_seq_tag);
 
 	switch (flags) {
 	case MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM:
@@ -500,7 +509,7 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		 * no need to create a message context */
 		len = pkt->end - pkt->mctp_hdr_off - sizeof(struct mctp_hdr);
 		p = pkt->data + pkt->mctp_hdr_off + sizeof(struct mctp_hdr);
-		mctp_rx(mctp, bus, hdr->src, hdr->dest, p, len,
+		mctp_rx(mctp, bus, hdr->src, hdr->dest, p, len, tag_owner, tag,
 			pkt->msg_binding_private);
 		break;
 
@@ -510,12 +519,13 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		 * already present, drop it. */
 		/* TODO: add test if physical addressing matches for sequential
 		 * packets */
-		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag);
+		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag_owner,
+					  tag);
 		if (ctx) {
 			mctp_msg_ctx_reset(ctx);
 		} else {
 			ctx = mctp_msg_ctx_create(mctp, hdr->src, hdr->dest,
-						  tag);
+						  tag_owner, tag);
 		}
 
 		rc = mctp_msg_ctx_add_pkt(ctx, pkt);
@@ -528,7 +538,8 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		break;
 
 	case MCTP_HDR_FLAG_EOM:
-		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag);
+		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag_owner,
+					  tag);
 		if (!ctx)
 			goto out;
 
@@ -545,14 +556,16 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		rc = mctp_msg_ctx_add_pkt(ctx, pkt);
 		if (!rc)
 			mctp_rx(mctp, bus, ctx->src, ctx->dest, ctx->buf,
-				ctx->buf_size, pkt->msg_binding_private);
+				ctx->buf_size, tag_owner, tag,
+				pkt->msg_binding_private);
 
 		mctp_msg_ctx_drop(ctx);
 		break;
 
 	case 0:
 		/* Neither SOM nor EOM */
-		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag);
+		ctx = mctp_msg_ctx_lookup(mctp, hdr->src, hdr->dest, tag_owner,
+					  tag);
 		if (!ctx)
 			goto out;
 
@@ -722,7 +735,8 @@ static inline bool mctp_ctrl_cmd_is_transport(struct mctp_ctrl_msg_hdr *hdr)
 
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
-			  size_t length, void *msg_binding_private)
+			  size_t length, bool tag_owner, uint8_t tag,
+			  void *msg_binding_private)
 {
 	struct mctp_ctrl_msg_hdr *msg_hdr = (struct mctp_ctrl_msg_hdr *)buffer;
 	/* Control message is received.
@@ -735,7 +749,7 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			/* MCTP bus binding handler */
 			bus->binding->control_rx(src,
 						 bus->binding->control_rx_data,
-						 buffer, length,
+						 buffer, length, tag_owner, tag,
 						 msg_binding_private);
 			return true;
 		}
@@ -743,7 +757,8 @@ bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 		if (mctp->control_rx != NULL) {
 			/* MCTP endpoint handler */
 			mctp->control_rx(src, mctp->control_rx_data, buffer,
-					 length, msg_binding_private);
+					 length, tag_owner, tag,
+					 msg_binding_private);
 			return true;
 		}
 	}
@@ -867,7 +882,8 @@ bool mctp_encode_ctrl_cmd_get_routing_table(
 	if (!get_routing_table_cmd)
 		return false;
 
-	encode_ctrl_cmd_header(&get_routing_table_cmd->ctrl_msg_hdr, rq_dgram_inst,
+	encode_ctrl_cmd_header(&get_routing_table_cmd->ctrl_msg_hdr,
+			       rq_dgram_inst,
 			       MCTP_CTRL_CMD_GET_ROUTING_TABLE_ENTRIES);
 	get_routing_table_cmd->entry_handle = entry_handle;
 	return true;

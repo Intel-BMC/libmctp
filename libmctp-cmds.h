@@ -253,7 +253,8 @@ struct get_routing_table_entry {
 
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
-			  size_t length, void *msg_binding_private);
+			  size_t length, bool tag_owner, uint8_t tag,
+			  void *msg_binding_private);
 
 int mctp_set_rx_ctrl(struct mctp *mctp, mctp_rx_fn fn, void *data);
 
