@@ -180,18 +180,40 @@ int mctp_pktbuf_push(struct mctp_pktbuf *pkt, void *data, size_t len)
 	return 0;
 }
 
+static bool mctp_msg_ctx_match(struct mctp_msg_ctx *ctx1,
+			       struct mctp_msg_ctx *ctx2)
+{
+	return ctx1->src == ctx2->src && ctx1->dest == ctx2->dest &&
+	       ctx1->tag == ctx2->tag;
+}
+
 /* Message reassembly */
 static struct mctp_msg_ctx *mctp_msg_ctx_lookup(struct mctp *mctp, uint8_t src,
 						uint8_t dest, uint8_t tag)
 {
+	struct mctp_msg_ctx ctx = { .src = src, .dest = dest, .tag = tag };
 	unsigned int i;
 
 	/* @todo: better lookup, if we add support for more outstanding
 	 * message contexts */
+
 	for (i = 0; i < ARRAY_SIZE(mctp->msg_ctxs); i++) {
-		struct mctp_msg_ctx *ctx = &mctp->msg_ctxs[i];
-		if (ctx->src == src && ctx->dest == dest && ctx->tag == tag)
-			return ctx;
+		struct mctp_msg_ctx *it = &mctp->msg_ctxs[i];
+		if (mctp_msg_ctx_match(&ctx, it))
+			return it;
+	}
+
+	return NULL;
+}
+
+static struct mctp_msg_ctx *mctp_msg_ctx_find_free(struct mctp *mctp)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(mctp->msg_ctxs); i++) {
+		struct mctp_msg_ctx *it = &mctp->msg_ctxs[i];
+		if (!it->src)
+			return it;
 	}
 
 	return NULL;
@@ -200,24 +222,14 @@ static struct mctp_msg_ctx *mctp_msg_ctx_lookup(struct mctp *mctp, uint8_t src,
 static struct mctp_msg_ctx *mctp_msg_ctx_create(struct mctp *mctp, uint8_t src,
 						uint8_t dest, uint8_t tag)
 {
-	struct mctp_msg_ctx *ctx = NULL;
-	unsigned int i;
+	struct mctp_msg_ctx *ctx = mctp_msg_ctx_find_free(mctp);
 
-	for (i = 0; i < ARRAY_SIZE(mctp->msg_ctxs); i++) {
-		struct mctp_msg_ctx *tmp = &mctp->msg_ctxs[i];
-		if (!tmp->src) {
-			ctx = tmp;
-			break;
-		}
+	if (ctx) {
+		ctx->src = src;
+		ctx->dest = dest;
+		ctx->tag = tag;
+		ctx->buf_size = 0;
 	}
-
-	if (!ctx)
-		return NULL;
-
-	ctx->src = src;
-	ctx->dest = dest;
-	ctx->tag = tag;
-	ctx->buf_size = 0;
 
 	return ctx;
 }
