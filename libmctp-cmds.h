@@ -111,6 +111,8 @@ struct mctp_ctrl_cmd_get_routing_table {
 #define MCTP_CTRL_CC_ERROR_UNSUPPORTED_CMD 0x05
 /* 0x80 - 0xFF are command specific */
 
+#define MCTP_CTRL_CC_GET_MCTP_VER_SUPPORT_UNSUPPORTED_TYPE 0x80
+
 /* MCTP Set Endpoint ID response fields
  * See DSP0236 v1.3.0 Table 14.
  */
@@ -201,6 +203,8 @@ typedef union {
 	(((field) >> MCTP_ROUTING_ENTRY_TYPE_SHIFT) &                          \
 	 MCTP_ROUTING_ENTRY_TYPE_MASK)
 
+#define MCTP_GET_VERSION_SUPPORT_BASE_INFO 0xFF
+
 struct mctp_ctrl_resp_get_eid {
 	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
@@ -276,6 +280,19 @@ struct mctp_ctrl_resp_get_msg_type_support {
 
 struct msg_type_entry {
 	uint8_t msg_type_no;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_resp_get_mctp_ver_support {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	uint8_t number_of_entries;
+} __attribute__((__packed__));
+
+struct version_entry {
+	uint8_t major;
+	uint8_t minor;
+	uint8_t update;
+	uint8_t alpha;
 } __attribute__((__packed__));
 
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
