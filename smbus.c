@@ -123,6 +123,8 @@ static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
 	}
 
 #endif
+	mctp_trace_tx(smbus->txbuf, len);
+
 	struct i2c_msg msg[1] = { { .addr = pkt_pvt->slave_addr >>
 					    1, // seven bit address
 				    .flags = 0,
@@ -222,6 +224,8 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		mctp_prerr("Failed to read");
 		return -1;
 	}
+
+	mctp_trace_rx(smbus->rxbuf, len);
 
 	if (len < sizeof(*smbus_hdr_rx)) {
 		// This condition hits from from time to time, even with

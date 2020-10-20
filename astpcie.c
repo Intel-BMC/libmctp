@@ -117,6 +117,8 @@ static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 	len = (payload_len_dw * sizeof(uint32_t)) +
 	      ASPEED_MCTP_PCIE_VDM_HDR_SIZE;
 
+	mctp_trace_tx(pkt->data, len);
+
 	write_len = write(astpcie->fd, pkt->data, len);
 	if (write_len < 0) {
 		mctp_prerr("TX error");
@@ -186,6 +188,8 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 		mctp_prerr("Reading RX data failed (errno = %d)", errno);
 		return -1;
 	}
+
+	mctp_trace_rx(&data, read_len);
 
 	if (read_len != ASTPCIE_PACKET_SIZE(MCTP_BTU)) {
 		mctp_prerr("Incorrect packet size: %zd", read_len);
