@@ -32,7 +32,7 @@ static const struct mctp_pcie_hdr mctp_pcie_hdr_template_be = {
 	.vendor = VENDOR_ID_DMTF_VDM
 };
 
-static int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
+static int mctp_astpcie_get_bdf_ioctl(struct mctp_binding_astpcie *astpcie)
 {
 	struct aspeed_mctp_get_bdf bdf;
 	int rc;
@@ -40,6 +40,17 @@ static int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie)
 	rc = ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_GET_BDF, &bdf);
 	if (!rc)
 		astpcie->bdf = bdf.bdf;
+
+	return rc;
+}
+
+int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie, uint16_t *bdf)
+{
+	int rc;
+
+	rc = mctp_astpcie_get_bdf_ioctl(astpcie);
+	if (!rc)
+		*bdf = astpcie->bdf;
 
 	return rc;
 }
@@ -70,7 +81,7 @@ static int mctp_astpcie_start(struct mctp_binding *b)
 
 	rc = mctp_astpcie_open(astpcie);
 	if (!rc)
-		rc = mctp_astpcie_get_bdf(astpcie);
+		rc = mctp_astpcie_get_bdf_ioctl(astpcie);
 	if (rc)
 		return -errno;
 
