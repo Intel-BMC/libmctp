@@ -268,6 +268,16 @@ struct mctp_ctrl_resp_get_vdm_support {
 	 * and shall be interpreted by appropriate binding handler */
 } __attribute__((__packed__));
 
+struct mctp_ctrl_resp_get_msg_type_support {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	uint8_t msg_type_count;
+} __attribute__((__packed__));
+
+struct msg_type_entry {
+	uint8_t msg_type_no;
+} __attribute__((__packed__));
+
 bool mctp_ctrl_handle_msg(struct mctp *mctp, struct mctp_bus *bus,
 			  mctp_eid_t src, mctp_eid_t dest, void *buffer,
 			  size_t length, bool tag_owner, uint8_t tag,
