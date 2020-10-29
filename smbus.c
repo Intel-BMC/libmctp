@@ -209,6 +209,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	bool eom = false;
 #endif
 
+	smbus_hdr_rx = (void *)smbus->rxbuf;
 	int ret = lseek(smbus->in_fd, 0, SEEK_SET);
 	if (ret < 0) {
 		mctp_prerr("Failed to seek");
@@ -238,8 +239,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 			   smbus_hdr_rx->byte_count);
 		return 0;
 	}
-
-	smbus_hdr_rx = (void *)smbus->rxbuf;
 
 	if (smbus_hdr_rx->destination_slave_address !=
 	    (MCTP_SOURCE_SLAVE_ADDRESS & ~1)) {
