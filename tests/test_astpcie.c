@@ -16,6 +16,7 @@
 
 static int stubbed_fd = 3;
 static uint16_t stubbed_bdf = 0x100;
+static uint8_t stubbed_medium_id = 0x9;
 
 /* Packet with */
 static uint8_t rx_test_packet[][PACKET_SIZE] = {
@@ -70,14 +71,21 @@ int close(int fd)
 
 int ioctl(int fd, unsigned long request, void *data)
 {
-	struct aspeed_mctp_get_bdf *bdf = (struct aspeed_mctp_get_bdf *)data;
-
 	assert(fd == stubbed_fd);
 
 	switch (request) {
-	case ASPEED_MCTP_IOCTL_GET_BDF:
+	case ASPEED_MCTP_IOCTL_GET_BDF: {
+		struct aspeed_mctp_get_bdf *bdf =
+			(struct aspeed_mctp_get_bdf *)data;
 		bdf->bdf = stubbed_bdf;
 		break;
+	}
+	case ASPEED_MCTP_IOCTL_GET_MEDIUM_ID: {
+		struct aspeed_mctp_get_medium_id *medium_id =
+			(struct aspeed_mctp_get_medium_id *)data;
+		medium_id->medium_id = stubbed_medium_id;
+		break;
+	}
 	default:
 		mctp_prdebug("Unrecognized ioctl");
 		assert(0);

@@ -12,6 +12,7 @@
 struct mctp_binding_astpcie {
 	struct mctp_binding binding;
 	uint16_t bdf;
+	uint8_t medium_id;
 	int fd;
 };
 

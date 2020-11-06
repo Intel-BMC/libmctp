@@ -55,6 +55,25 @@ int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie, uint16_t *bdf)
 	return rc;
 }
 
+static int
+mctp_astpcie_get_medium_id_ioctl(struct mctp_binding_astpcie *astpcie)
+{
+	struct aspeed_mctp_get_medium_id get_medium_id;
+	int rc;
+
+	rc = ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_GET_MEDIUM_ID,
+		   &get_medium_id);
+	if (!rc)
+		astpcie->medium_id = get_medium_id.medium_id;
+
+	return rc;
+}
+
+uint8_t mctp_astpcie_get_medium_id(struct mctp_binding_astpcie *astpcie)
+{
+	return astpcie->medium_id;
+}
+
 static int mctp_astpcie_open(struct mctp_binding_astpcie *astpcie)
 {
 	int fd = open(AST_DRV_FILE, O_RDWR);
@@ -69,8 +88,14 @@ static int mctp_astpcie_open(struct mctp_binding_astpcie *astpcie)
 	return 0;
 }
 
+static void mctp_astpcie_close(struct mctp_binding_astpcie *astpcie)
+{
+	close(astpcie->fd);
+	astpcie->fd = -1;
+}
+
 /*
- * Start function. Opens driver and read bdf
+ * Start function. Opens driver, read bdf and medium_id
  */
 static int mctp_astpcie_start(struct mctp_binding *b)
 {
@@ -80,12 +105,22 @@ static int mctp_astpcie_start(struct mctp_binding *b)
 	assert(astpcie);
 
 	rc = mctp_astpcie_open(astpcie);
-	if (!rc)
-		rc = mctp_astpcie_get_bdf_ioctl(astpcie);
 	if (rc)
 		return -errno;
 
+	rc = mctp_astpcie_get_bdf_ioctl(astpcie);
+	if (rc)
+		goto out_close;
+
+	rc = mctp_astpcie_get_medium_id_ioctl(astpcie);
+	if (rc)
+		goto out_close;
+
 	return 0;
+
+out_close:
+	mctp_astpcie_close(astpcie);
+	return -errno;
 }
 
 static uint8_t mctp_astpcie_tx_get_pad_len(struct mctp_pktbuf *pkt)
@@ -277,10 +312,10 @@ struct mctp_binding_astpcie *mctp_astpcie_init(void)
 /*
  * Closes file descriptor and releases binding memory
  */
-void mctp_astpcie_free(struct mctp_binding_astpcie *b)
+void mctp_astpcie_free(struct mctp_binding_astpcie *astpcie)
 {
-	close(b->fd);
-	__mctp_free(b);
+	mctp_astpcie_close(astpcie);
+	__mctp_free(astpcie);
 }
 
 /*
