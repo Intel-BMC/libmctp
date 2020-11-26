@@ -272,6 +272,15 @@ struct mctp_ctrl_resp_get_vdm_support {
 	 * and shall be interpreted by appropriate binding handler */
 } __attribute__((__packed__));
 
+struct mctp_pci_ctrl_resp_get_vdm_support {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+	uint8_t vendor_id_set_selector;
+	uint8_t vendor_id_format;
+	uint16_t vendor_id_data;
+	uint16_t command_set_type;
+} __attribute__((__packed__));
+
 struct mctp_ctrl_resp_get_msg_type_support {
 	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
