@@ -37,7 +37,6 @@
 #define SMBUS_COMMAND_CODE_SIZE 1
 #define SMBUS_LENGTH_FIELD_SIZE 1
 #define SMBUS_ADDR_OFFSET_SLAVE 0x1000
-#define SMBUS_MAX_PKT_PAYLOAD_SIZE 64
 
 #ifdef I2C_M_HOLD
 static struct mctp_smbus_extra_params active_mux_info = { .fd = -1,
@@ -333,7 +332,8 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	smbus->rx_pkt = NULL;
 	smbus->binding.name = "smbus";
 	smbus->binding.version = 1;
-	smbus->binding.pkt_size = SMBUS_MAX_PKT_PAYLOAD_SIZE;
+	smbus->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
+	smbus->binding.pkt_pad = SMBUS_HEADER_SIZE ;
 	smbus->binding.pkt_priv_size = sizeof(struct mctp_smbus_extra_params);
 
 	smbus->binding.tx = mctp_binding_smbus_tx;
