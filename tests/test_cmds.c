@@ -70,7 +70,7 @@ void setup_test_binding(struct mctp_binding *test_binding,
 
 	memset(test_binding, 0, sizeof(*test_binding));
 	test_binding->name = "test";
-	test_binding->version = 1;
+	test_binding->version = MCTP_VERSION;
 	test_binding->tx = mctp_test_tx;
 	test_binding->pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
 	test_binding->pkt_pad = 0;
@@ -87,6 +87,7 @@ void send_control_message(struct mctp_binding *bin)
 {
 	struct msg_payload ctl_msg_to_send;
 	memset(&ctl_msg_to_send, 0, sizeof(ctl_msg_to_send));
+	ctl_msg_to_send.hdr.ver = MCTP_VERSION;
 	ctl_msg_to_send.hdr.dest = eid_1;
 	ctl_msg_to_send.hdr.src = eid_2;
 	ctl_msg_to_send.hdr.flags_seq_tag =
@@ -104,6 +105,7 @@ void send_control_message_with_reserved_command_code(struct mctp_binding *bin)
 {
 	struct msg_payload ctl_msg_to_send;
 	memset(&ctl_msg_to_send, 0, sizeof(ctl_msg_to_send));
+	ctl_msg_to_send.hdr.ver = MCTP_VERSION;
 	ctl_msg_to_send.hdr.dest = eid_1;
 	ctl_msg_to_send.hdr.src = eid_2;
 	ctl_msg_to_send.hdr.flags_seq_tag =
@@ -121,6 +123,7 @@ void send_transport_control_message(struct mctp_binding *bin)
 {
 	struct msg_payload ctl_msg_to_send;
 	memset(&ctl_msg_to_send, 0, sizeof(ctl_msg_to_send));
+	ctl_msg_to_send.hdr.ver = MCTP_VERSION;
 	ctl_msg_to_send.hdr.dest = eid_1;
 	ctl_msg_to_send.hdr.src = eid_2;
 	ctl_msg_to_send.hdr.flags_seq_tag =

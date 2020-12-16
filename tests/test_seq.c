@@ -120,6 +120,7 @@ static void run_one_test(struct test_ctx *ctx, struct test *test)
 
 	for (i = 0; i < test->n_packets; i++) {
 		memset(&pktbuf, 0, sizeof(pktbuf));
+		pktbuf.hdr.ver = MCTP_VERSION;
 		pktbuf.hdr.dest = local_eid;
 		pktbuf.hdr.src = remote_eid;
 		pktbuf.hdr.flags_seq_tag = test->flags_seq_tags[i];

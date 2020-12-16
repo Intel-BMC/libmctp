@@ -66,7 +66,7 @@ static struct mctp_binding_bridge *mctp_binding_bridge_init(void)
 	binding = __mctp_alloc(sizeof(*binding));
 	memset(binding, 0, sizeof(*binding));
 	binding->binding.name = "test";
-	binding->binding.version = 1;
+	binding->binding.version = MCTP_VERSION;
 	binding->binding.tx = mctp_binding_bridge_tx;
 	binding->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
 	binding->binding.pkt_pad = 0;

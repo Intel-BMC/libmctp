@@ -13,6 +13,7 @@
 
 #define TEST_EID 8
 #define TEST_TARGET_EID 9
+#define MCTP_VERSION 1
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
@@ -59,7 +60,7 @@ struct mctp_binding *mctp_binding_test_init(size_t pkt_priv_size)
 	test = __mctp_alloc(sizeof(*test));
 	memset(test, '\0', sizeof(*test));
 	test->name = "test";
-	test->version = 1;
+	test->version = MCTP_VERSION;
 	test->tx = mctp_binding_test_tx;
 	test->pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
 	test->pkt_pad = 0;

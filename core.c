@@ -495,8 +495,10 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 
 	/* small optimisation: don't bother reassembly if we're going to
 	 * drop the packet in mctp_rx anyway */
-	if (mctp->route_policy == ROUTE_ENDPOINT && hdr->dest != bus->eid &&
-	    hdr->dest != MCTP_EID_NULL && hdr->dest != MCTP_EID_BROADCAST)
+	if (mctp->route_policy == ROUTE_ENDPOINT &&
+	    ((hdr->dest != bus->eid && hdr->dest != MCTP_EID_NULL &&
+	      hdr->dest != MCTP_EID_BROADCAST) ||
+	     binding->version != hdr->ver))
 		goto out;
 
 	tag_owner = hdr->flags_seq_tag & MCTP_HDR_FLAG_TO;

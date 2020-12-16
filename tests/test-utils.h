@@ -6,6 +6,7 @@
 #include <libmctp.h>
 #include <container_of.h>
 
+#define MCTP_VERSION 1
 /* test binding implementation */
 
 /* standard binding interface */

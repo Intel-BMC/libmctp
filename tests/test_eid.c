@@ -31,6 +31,7 @@ static void test_rx(uint8_t eid, void *data, void *msg, size_t len,
 static void create_packet(struct mctp_hdr *pkt, mctp_eid_t src, mctp_eid_t dest)
 {
 	memset(pkt, 0, sizeof(*pkt));
+	pkt->ver = MCTP_VERSION;
 	pkt->src = src;
 	pkt->dest = dest;
 	pkt->flags_seq_tag = MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM;
