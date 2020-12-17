@@ -111,6 +111,7 @@ static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
 					    .buf = (uint8_t *)&holdtimeout } };
 
 		struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 2 };
+		mctp_trace_tx(smbus->txbuf, len);
 		rc = ioctl(pkt_pvt->fd, I2C_RDWR, &msgrdwr);
 
 		/* Store active mux info */
@@ -333,7 +334,7 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	smbus->binding.name = "smbus";
 	smbus->binding.version = 1;
 	smbus->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
-	smbus->binding.pkt_pad = SMBUS_HEADER_SIZE ;
+	smbus->binding.pkt_pad = SMBUS_HEADER_SIZE;
 	smbus->binding.pkt_priv_size = sizeof(struct mctp_smbus_extra_params);
 
 	smbus->binding.tx = mctp_binding_smbus_tx;
