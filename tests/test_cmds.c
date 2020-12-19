@@ -11,6 +11,8 @@
 
 static const mctp_eid_t eid_1 = 9;
 static const mctp_eid_t eid_2 = 10;
+/*arbitrary value taken*/
+static const uint8_t _instance_id = 0x05;
 
 struct msg_payload {
 	struct mctp_hdr hdr;
@@ -137,6 +139,148 @@ void send_transport_control_message(struct mctp_binding *bin)
 	rcv_ctrl_msg(bin, &ctl_msg_to_send, sizeof(ctl_msg_to_send));
 }
 
+void send_message_set_eid(const uint8_t eid)
+{
+	struct mctp_ctrl_cmd_set_eid cmd_set_eid;
+
+	assert(mctp_encode_ctrl_cmd_set_eid(
+		&cmd_set_eid, (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+		set_eid, eid));
+
+	assert(cmd_set_eid.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_SET_ENDPOINT_ID);
+	assert(cmd_set_eid.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_set_eid.ctrl_msg_hdr.ic_msg_type == MCTP_CTRL_HDR_MSG_TYPE);
+
+	assert(cmd_set_eid.eid == eid);
+	assert(cmd_set_eid.operation == set_eid);
+}
+
+void send_message_get_eid(void)
+{
+	struct mctp_ctrl_cmd_get_eid cmd_get_eid;
+
+	assert(mctp_encode_ctrl_cmd_get_eid(
+		&cmd_get_eid, (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST)));
+
+	assert(cmd_get_eid.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_ENDPOINT_ID);
+	assert(cmd_get_eid.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_get_eid.ctrl_msg_hdr.ic_msg_type == MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+void send_message_get_uuid(void)
+{
+	struct mctp_ctrl_cmd_get_uuid cmd_get_uuid;
+
+	assert(mctp_encode_ctrl_cmd_get_uuid(
+		&cmd_get_uuid, (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST)));
+
+	assert(cmd_get_uuid.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_ENDPOINT_UUID);
+	assert(cmd_get_uuid.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_get_uuid.ctrl_msg_hdr.ic_msg_type == MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+void send_message_get_version_ctrl(void)
+{
+	struct mctp_ctrl_cmd_get_mctp_ver_support cmd_version_support;
+
+	assert(mctp_encode_ctrl_cmd_get_ver_support(
+		&cmd_version_support,
+		(_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+		MCTP_CTRL_HDR_MSG_TYPE));
+
+	assert(cmd_version_support.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_VERSION_SUPPORT);
+	assert(cmd_version_support.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_version_support.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+void send_cmd_get_msg_type_support(void)
+{
+	struct mctp_ctrl_cmd_get_msg_type_support cmd_get_msg_type_support;
+
+	assert(mctp_encode_ctrl_cmd_get_msg_type_support(
+		&cmd_get_msg_type_support,
+		(_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST)));
+
+	assert(cmd_get_msg_type_support.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_MESSAGE_TYPE_SUPPORT);
+	assert(cmd_get_msg_type_support.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_get_msg_type_support.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+void send_cmd_get_vdm_support(struct mctp_binding *test_binding,
+			      const uint8_t val)
+{
+	struct mctp_ctrl_cmd_get_vdm_support cmd_get_vdm_support;
+
+	assert(mctp_encode_ctrl_cmd_get_vdm_support(
+		&cmd_get_vdm_support,
+		(_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST), val));
+
+	assert(cmd_get_vdm_support.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_VENDOR_MESSAGE_SUPPORT);
+	assert(cmd_get_vdm_support.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(cmd_get_vdm_support.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+
+	assert(cmd_get_vdm_support.vendor_id_set_selector == val);
+}
+
+void send_cmd_discover_notify(struct mctp_binding *test_binding)
+{
+	struct mctp_ctrl_cmd_discovery_notify discovery_notify_cmd;
+
+	assert(mctp_encode_ctrl_cmd_discovery_notify(
+		&discovery_notify_cmd,
+		(_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST)));
+
+	assert(discovery_notify_cmd.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_DISCOVERY_NOTIFY);
+	assert(discovery_notify_cmd.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(discovery_notify_cmd.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+void send_cmd_routing_table(struct mctp_binding *test_binding,
+			    const uint8_t val)
+{
+	struct mctp_ctrl_cmd_get_routing_table get_routing_table_cmd;
+
+	assert(true == mctp_encode_ctrl_cmd_get_routing_table(
+			       &get_routing_table_cmd,
+			       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+			       val));
+
+	assert(get_routing_table_cmd.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_GET_ROUTING_TABLE_ENTRIES);
+	assert(get_routing_table_cmd.ctrl_msg_hdr.rq_dgram_inst ==
+	       (_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+	assert(get_routing_table_cmd.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+
+	assert(get_routing_table_cmd.entry_handle == val);
+}
+
+void send_message_negative_get_version_ctrl(struct mctp_binding *test_binding)
+{
+	assert(false == mctp_encode_ctrl_cmd_get_ver_support(
+				NULL,
+				(_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+				MCTP_CTRL_HDR_MSG_TYPE));
+}
+
 int main(int argc, char *argv[])
 {
 	struct mctp *test_endpoint = mctp_init();
@@ -155,6 +299,27 @@ int main(int argc, char *argv[])
 
 	/* Transport control message: */
 	assert(callback_results == expected_callback_results);
+
+	send_message_set_eid(eid_1);
+
+	send_message_get_eid();
+
+	send_message_get_uuid();
+
+	send_message_get_version_ctrl();
+
+	send_cmd_get_msg_type_support();
+
+	send_cmd_get_vdm_support(NULL, 5);
+
+	send_cmd_discover_notify(NULL);
+
+	send_cmd_routing_table(NULL, 10);
+
+	/*negative test case for eid*/
+	send_message_set_eid(1);
+
+	send_message_negative_get_version_ctrl(NULL);
 
 	__mctp_free(test_endpoint);
 }
