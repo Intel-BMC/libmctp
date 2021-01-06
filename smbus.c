@@ -43,6 +43,10 @@ static struct mctp_smbus_extra_params active_mux_info = { .fd = -1,
 							  .muxHoldTimeOut = 0,
 							  .muxFlags = 0,
 							  .slave_addr = 0 };
+static struct mctp_smbus_extra_params reserve_mux_info = { .fd = -1,
+							   .muxHoldTimeOut = 0,
+							   .muxFlags = 0,
+							   .slave_addr = 0 };
 #endif
 
 struct mctp_smbus_header_tx {
@@ -92,11 +96,98 @@ static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint8_t address)
 	return pec;
 }
 
+static void cleanup_reserve_mux_info(void)
+{
+	reserve_mux_info.fd = -1;
+	reserve_mux_info.muxHoldTimeOut = 0;
+	reserve_mux_info.muxFlags = 0;
+	reserve_mux_info.slave_addr = 0;
+}
+
+static int smbus_model_mux(const uint16_t holdtimeout)
+{
+#ifdef I2C_M_HOLD
+
+	struct i2c_msg holdmsg = { 0, I2C_M_HOLD, sizeof(holdtimeout),
+				   (uint8_t *)&holdtimeout };
+
+	struct i2c_rdwr_ioctl_data msgrdwr = { &holdmsg, 1 };
+
+	return ioctl(reserve_mux_info.fd, I2C_RDWR, &msgrdwr);
+#else
+	return 0;
+#endif
+}
+
+static int smbus_pull_model_hold_mux(void)
+{
+	/*taking max hold time as 0xFFFF seconds*/
+	return smbus_model_mux(0xFFFF);
+}
+
+static int smbus_pull_model_unhold_mux(void)
+{
+	return smbus_model_mux(0);
+}
+
+static bool pull_model_active;
+int mctp_smbus_init_pull_model(const struct mctp_smbus_extra_params *prvt)
+{
+	int rc = -1;
+
+	if (pull_model_active) {
+		mctp_prerr("%s: pull model is already active.", __func__);
+		return rc;
+	}
+	reserve_mux_info.fd = prvt->fd;
+	reserve_mux_info.muxFlags = prvt->muxFlags;
+	reserve_mux_info.slave_addr = prvt->slave_addr;
+	rc = smbus_pull_model_hold_mux();
+	if (rc < 0) {
+		cleanup_reserve_mux_info();
+		mctp_prerr(
+			"%s: Failed to hold the bus for device address: 0X%x",
+			__func__, prvt->slave_addr);
+		return rc;
+	}
+	pull_model_active = true;
+	return rc;
+}
+
+int mctp_smbus_exit_pull_model(const struct mctp_smbus_extra_params *prvt)
+{
+	int rc = -1;
+
+	if (!(pull_model_active &&
+	      reserve_mux_info.slave_addr == prvt->slave_addr &&
+	      reserve_mux_info.fd == prvt->fd)) {
+		mctp_prerr(
+			"%s: pull model is not active for device address: 0X%x.",
+			__func__, prvt->slave_addr);
+		return rc;
+	}
+	rc = smbus_pull_model_unhold_mux();
+	if (rc < 0) {
+		mctp_prerr(
+			"%s: Failed to unhold the bus for device address: 0X%x",
+			__func__, prvt->slave_addr);
+		return rc;
+	}
+	pull_model_active = false;
+	cleanup_reserve_mux_info();
+	return rc;
+}
+
 static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
 			 struct mctp_smbus_extra_params *pkt_pvt)
 {
 #ifdef I2C_M_HOLD
 	int rc;
+
+	if (pull_model_active && (smbus_pull_model_unhold_mux() < 0)) {
+		mctp_prerr("%s: Failed to unhold the bus.", __func__);
+		return -1;
+	}
 	if (pkt_pvt->muxFlags) {
 		uint16_t holdtimeout =
 			pkt_pvt->muxHoldTimeOut; // timeout in ms.

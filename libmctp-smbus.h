@@ -48,6 +48,8 @@ struct mctp_binding_smbus *mctp_smbus_init(void);
 int mctp_smbus_register_bus(struct mctp_binding_smbus *smbus, struct mctp *mctp,
 			    mctp_eid_t eid);
 int mctp_smbus_read(struct mctp_binding_smbus *smbus);
+int mctp_smbus_init_pull_model(const struct mctp_smbus_extra_params *prvt);
+int mctp_smbus_exit_pull_model(const struct mctp_smbus_extra_params *prvt);
 void mctp_smbus_free(struct mctp_binding_smbus *smbus);
 int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd);
 int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd);
