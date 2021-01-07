@@ -99,6 +99,11 @@ mctp_astpcie_get_medium_id_ioctl(struct mctp_binding_astpcie *astpcie)
 	return rc;
 }
 
+int mctp_astpcie_register_default_handler(struct mctp_binding_astpcie *astpcie)
+{
+	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_REGISTER_DEFAULT_HANDLER);
+}
+
 uint8_t mctp_astpcie_get_medium_id(struct mctp_binding_astpcie *astpcie)
 {
 	return astpcie->medium_id;

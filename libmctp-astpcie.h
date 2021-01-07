@@ -44,6 +44,8 @@ int mctp_astpcie_get_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
 int mctp_astpcie_set_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
 				    void *eid_info, uint16_t count);
 
+int mctp_astpcie_register_default_handler(struct mctp_binding_astpcie *astpcie);
+
 /*
  * Routing types
  */
