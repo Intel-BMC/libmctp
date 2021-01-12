@@ -37,6 +37,13 @@ int mctp_astpcie_get_bdf(struct mctp_binding_astpcie *astpcie, uint16_t *bdf);
 
 uint8_t mctp_astpcie_get_medium_id(struct mctp_binding_astpcie *astpcie);
 
+int mctp_astpcie_get_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
+				    void *eid_info, uint16_t count,
+				    uint8_t start_eid);
+
+int mctp_astpcie_set_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
+				    void *eid_info, uint16_t count);
+
 /*
  * Routing types
  */

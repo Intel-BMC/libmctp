@@ -32,6 +32,36 @@ static const struct mctp_pcie_hdr mctp_pcie_hdr_template_be = {
 	.vendor = VENDOR_ID_DMTF_VDM
 };
 
+int mctp_astpcie_get_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
+				    void *eid_info, uint16_t count,
+				    uint8_t start_eid)
+{
+	struct aspeed_mctp_get_eid_info get_eid_info;
+	int rc;
+
+	get_eid_info.count = count;
+	get_eid_info.start_eid = start_eid;
+	get_eid_info.ptr = (uint64_t)eid_info;
+
+	rc = ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_GET_EID_INFO, &get_eid_info);
+	if (!rc)
+		memcpy(eid_info, (void *)get_eid_info.ptr, get_eid_info.count);
+
+	return rc;
+}
+
+int mctp_astpcie_set_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
+				    void *eid_info, uint16_t count)
+{
+	struct aspeed_mctp_set_eid_info set_eid_info;
+
+	set_eid_info.count = count;
+	set_eid_info.ptr = (uint64_t)eid_info;
+
+	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_SET_EID_INFO,
+		     &set_eid_info);
+}
+
 static int mctp_astpcie_get_bdf_ioctl(struct mctp_binding_astpcie *astpcie)
 {
 	struct aspeed_mctp_get_bdf bdf;

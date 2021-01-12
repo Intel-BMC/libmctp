@@ -12,16 +12,11 @@
  *  +----------------------+
  *  | PCIe VDM Header      | 16 bytes (Big Endian)
  *  +----------------------+
- *  | MCTP Message Payload | 64/128/256/512 bytes (Little Endian)
+ *  | MCTP Message Payload | 64/128/256/512 bytes (Big Endian)
  *  +----------------------+
  *
  * MCTP packet description can be found in DMTF DSP0238,
  * MCTP PCIe VDM Transport Specification.
- *
- * Note: AST2600 hardware follows MCTP Message Payload rules from earlier
- * hardware and we've decided to copy the packets directly, without swapping.
- * This means that it's userspace responsibility to provide the data in
- * a format that the hardware expects.
  */
 
 #define ASPEED_MCTP_PCIE_VDM_HDR_SIZE 16
@@ -32,6 +27,11 @@
 #define ASPEED_MCTP_READY "PCIE_READY"
 
 /*
+ * maximum possible number of struct eid_info elements stored in list
+ */
+#define ASPEED_MCTP_EID_INFO_MAX 256
+
+/*
  * MCTP operations
  * @ASPEED_MCTP_IOCTL_FILTER_EID: enable/disable filter incoming packets based
  * on Endpoint ID (BROKEN)
@@ -39,6 +39,17 @@
  * @ASPEED_MCTP_IOCTL_GET_MEDIUM_ID: read MCTP physical medium identifier
  * related to PCIe revision
  * @ASPEED_MCTP_IOCTL_GET_MTU: read max transmission unit (in bytes)
+ * @ASPEED_MCTP_IOCTL_REGISTER_DEFAULT_HANDLER Register client as default
+ * handler that receives all MCTP messages that were not dispatched to other
+ * clients
+ * @ASPEED_MCTP_IOCTL_REGISTER_TYPE_HANDLER Register client to receive all
+ * messages of specified MCTP type or PCI vendor defined type
+ * @ASPEED_MCTP_IOCTL_UNREGISTER_TYPE_HANDLER Unregister client as handler
+ * for specified MCTP type or PCI vendor defined message type
+ * @ASPEED_MCTP_GET_EID_INFO: read list of existing endpoint mappings
+ * returns count which is less of the two requested count and existing count
+ * @ASPEED_MCTP_SET_EID_INFO: write list of endpoint mappings
+ * overwrites already existing endpoint mappings
  */
 
 struct aspeed_mctp_filter_eid {
@@ -58,6 +69,30 @@ struct aspeed_mctp_get_mtu {
 	__u8 mtu;
 };
 
+struct aspeed_mctp_type_handler_ioctl {
+	__u8 mctp_type; /* MCTP message type as per DSP239*/
+	/* Below params must be 0 if mctp_type is not Vendor Defined PCI */
+	__u16 pci_vendor_id; /* PCI Vendor ID */
+	__u16 vendor_type; /* Vendor specific type */
+	__u16 vendor_type_mask; /* Mask applied to vendor type */
+};
+
+struct aspeed_mctp_eid_info {
+	__u8 eid;
+	__u16 bdf;
+};
+
+struct aspeed_mctp_get_eid_info {
+	__u64 ptr;
+	__u16 count;
+	__u8 start_eid;
+};
+
+struct aspeed_mctp_set_eid_info {
+	__u64 ptr;
+	__u16 count;
+};
+
 #define ASPEED_MCTP_IOCTL_BASE 0x4d
 
 #define ASPEED_MCTP_IOCTL_FILTER_EID                                           \
@@ -68,5 +103,15 @@ struct aspeed_mctp_get_mtu {
 	_IOR(ASPEED_MCTP_IOCTL_BASE, 2, struct aspeed_mctp_get_medium_id)
 #define ASPEED_MCTP_IOCTL_GET_MTU                                              \
 	_IOR(ASPEED_MCTP_IOCTL_BASE, 3, struct aspeed_mctp_get_mtu)
+#define ASPEED_MCTP_IOCTL_REGISTER_DEFAULT_HANDLER                             \
+	_IO(ASPEED_MCTP_IOCTL_BASE, 4)
+#define ASPEED_MCTP_IOCTL_REGISTER_TYPE_HANDLER                                \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 6, struct aspeed_mctp_type_handler_ioctl)
+#define ASPEED_MCTP_IOCTL_UNREGISTER_TYPE_HANDLER                              \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 7, struct aspeed_mctp_type_handler_ioctl)
+#define ASPEED_MCTP_IOCTL_GET_EID_INFO                                         \
+	_IOWR(ASPEED_MCTP_IOCTL_BASE, 8, struct aspeed_mctp_get_eid_info)
+#define ASPEED_MCTP_IOCTL_SET_EID_INFO                                         \
+	_IOW(ASPEED_MCTP_IOCTL_BASE, 9, struct aspeed_mctp_set_eid_info)
 
 #endif /* _UAPI_LINUX_ASPEED_MCTP_H */
