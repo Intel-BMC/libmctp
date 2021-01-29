@@ -24,7 +24,6 @@ extern "C" {
 
 struct mctp_binding_smbus {
 	struct mctp_binding binding;
-	int out_fd;
 	int in_fd;
 
 	unsigned long bus_id;
@@ -53,7 +52,6 @@ int mctp_smbus_exit_pull_model(const struct mctp_smbus_extra_params *prvt);
 void mctp_smbus_free(struct mctp_binding_smbus *smbus);
 int mctp_smbus_close_mux(const int fd, const int address);
 int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd);
-int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd);
 #ifdef __cplusplus
 }
 #endif

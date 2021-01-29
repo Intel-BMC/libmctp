@@ -402,10 +402,6 @@ int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd)
 	smbus->in_fd = fd;
 }
 
-int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd)
-{
-	smbus->out_fd = fd;
-}
 #endif
 
 int mctp_smbus_register_bus(struct mctp_binding_smbus *smbus, struct mctp *mctp,
@@ -430,7 +426,6 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	memset(&(smbus->binding), 0, sizeof(smbus->binding));
 
 	smbus->in_fd = -1;
-	smbus->out_fd = -1;
 
 	smbus->rx_pkt = NULL;
 	smbus->binding.name = "smbus";
@@ -447,9 +442,6 @@ void mctp_smbus_free(struct mctp_binding_smbus *smbus)
 {
 	if (!(smbus->in_fd < 0)) {
 		close(smbus->in_fd);
-	}
-	if (!(smbus->out_fd < 0)) {
-		close(smbus->out_fd);
 	}
 
 	__mctp_free(smbus);
