@@ -222,6 +222,9 @@ int main(void)
 	rc = mctp_register_bus_dynamic_eid(mctp, astpcie_binding);
 	assert(rc == 0);
 
+	rc = mctp_astpcie_register_default_handler(astpcie);
+	assert(rc == 0);
+
 	ctx.mctp = mctp;
 	ctx.astpcie_binding = astpcie_binding;
 	ctx.discovered = false;
