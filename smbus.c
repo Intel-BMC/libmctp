@@ -104,6 +104,17 @@ static void cleanup_reserve_mux_info(void)
 	reserve_mux_info.slave_addr = 0;
 }
 
+int mctp_smbus_close_mux(const int fd, const int address)
+{
+	uint8_t txbuf[2] = { 0 };
+	struct i2c_msg msg[1] = {
+		{ .addr = address, .flags = 0, .len = 2, .buf = txbuf }
+	};
+	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 1 };
+
+	return ioctl(fd, I2C_RDWR, &msgrdwr);
+}
+
 static int smbus_model_mux(const uint16_t holdtimeout)
 {
 #ifdef I2C_M_HOLD
