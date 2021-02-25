@@ -46,6 +46,18 @@ int mctp_astpcie_set_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
 
 int mctp_astpcie_register_default_handler(struct mctp_binding_astpcie *astpcie);
 
+int mctp_astpcie_register_type_handler(struct mctp_binding_astpcie *astpcie,
+				       uint8_t mctp_type,
+				       uint16_t pci_vendor_id,
+				       uint16_t vendor_type,
+				       uint16_t vendor_type_mask);
+
+int mctp_astpcie_unregister_type_handler(struct mctp_binding_astpcie *astpcie,
+					 uint8_t mctp_type,
+					 uint16_t pci_vendor_id,
+					 uint16_t vendor_type,
+					 uint16_t vendor_type_mask);
+
 /*
  * Routing types
  */

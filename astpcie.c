@@ -104,6 +104,40 @@ int mctp_astpcie_register_default_handler(struct mctp_binding_astpcie *astpcie)
 	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_REGISTER_DEFAULT_HANDLER);
 }
 
+int mctp_astpcie_register_type_handler(struct mctp_binding_astpcie *astpcie,
+				       uint8_t mctp_type,
+				       uint16_t pci_vendor_id,
+				       uint16_t vendor_type,
+				       uint16_t vendor_type_mask)
+{
+	struct aspeed_mctp_type_handler_ioctl type_handler;
+
+	type_handler.mctp_type = mctp_type;
+	type_handler.pci_vendor_id = pci_vendor_id;
+	type_handler.vendor_type = vendor_type;
+	type_handler.vendor_type_mask = vendor_type_mask;
+
+	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_REGISTER_TYPE_HANDLER,
+		     &type_handler);
+}
+
+int mctp_astpcie_unregister_type_handler(struct mctp_binding_astpcie *astpcie,
+					 uint8_t mctp_type,
+					 uint16_t pci_vendor_id,
+					 uint16_t vendor_type,
+					 uint16_t vendor_type_mask)
+{
+	struct aspeed_mctp_type_handler_ioctl type_handler;
+
+	type_handler.mctp_type = mctp_type;
+	type_handler.pci_vendor_id = pci_vendor_id;
+	type_handler.vendor_type = vendor_type;
+	type_handler.vendor_type_mask = vendor_type_mask;
+
+	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_UNREGISTER_TYPE_HANDLER,
+		     &type_handler);
+}
+
 uint8_t mctp_astpcie_get_medium_id(struct mctp_binding_astpcie *astpcie)
 {
 	return astpcie->medium_id;
