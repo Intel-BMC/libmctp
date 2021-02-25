@@ -59,5 +59,8 @@ add_executable (test_encode_decode tests/test_encode_decode.c)
 target_link_libraries (test_encode_decode mctp_intel)
 add_test (NAME encode_decode COMMAND test_encode_decode)
 
+add_executable (mctp_astpcie_register_type utils/mctp-astpcie-register-type.c)
+target_link_libraries (mctp_astpcie_register_type mctp_intel)
+
 install (TARGETS mctp_intel DESTINATION lib)
 install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
