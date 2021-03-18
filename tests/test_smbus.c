@@ -359,6 +359,14 @@ static void negative_text_smbus_rx_pec(mctp_eid_t src, void *data, void *msg,
 	fn_call_cnt_pec++;
 }
 
+static void run_smbus_src_slave_addr_test(void)
+{
+	init_smbus_test(&smbus_ctx);
+	mctp_smbus_set_src_slave_addr(smbus_ctx.bind_smbus, 0x11);
+	assert(smbus_ctx.bind_smbus->src_slave_addr == 0x11);
+	destroy_smbus_test_ctx(&smbus_ctx);
+}
+
 int main(void)
 {
 	run_smbus_tx_test(NULL);
@@ -366,10 +374,13 @@ int main(void)
 
 	run_smbus_rx_test_pec(test_smbus_rx_pec);
 
-	/*Negetive test case*/
+	/*Negative test case*/
 	run_smbus_rx_test_negative(negative_text_smbus_rx);
 
 	run_smbus_rx_test_negative_pec(negative_text_smbus_rx_pec);
+
+	/*Set slave address*/
+	run_smbus_src_slave_addr_test();
 
 	return 0;
 }

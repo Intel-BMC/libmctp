@@ -32,7 +32,7 @@
 
 #define MCTP_COMMAND_CODE 0x0F
 #define MCTP_SLAVE_ADDR_INDEX 0
-#define MCTP_SOURCE_SLAVE_ADDRESS 0x11
+#define DEFAULT_SLAVE_ADDRESS 0x21
 
 #define SMBUS_COMMAND_CODE_SIZE 1
 #define SMBUS_LENGTH_FIELD_SIZE 1
@@ -279,7 +279,7 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	*/
 	size_t pkt_length = mctp_pktbuf_size(pkt);
 	smbus_hdr_tx->byte_count = pkt_length + 1;
-	smbus_hdr_tx->source_slave_address = MCTP_SOURCE_SLAVE_ADDRESS;
+	smbus_hdr_tx->source_slave_address = smbus->src_slave_addr;
 
 	size_t tx_buf_len = sizeof(*smbus_hdr_tx);
 	uint8_t i2c_message_len = tx_buf_len + pkt_length + SMBUS_PEC_BYTE_SIZE;
@@ -352,7 +352,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	}
 
 	if (smbus_hdr_rx->destination_slave_address !=
-	    (MCTP_SOURCE_SLAVE_ADDRESS & ~1)) {
+	    (smbus->src_slave_addr & ~1)) {
 		mctp_prerr("Got bad slave address %d",
 			   smbus_hdr_rx->destination_slave_address);
 		return 0;
@@ -448,6 +448,10 @@ struct mctp_binding_smbus *mctp_smbus_init(void)
 	smbus->binding.pkt_priv_size = sizeof(struct mctp_smbus_pkt_private);
 
 	smbus->binding.tx = mctp_binding_smbus_tx;
+
+	/* Setting the default slave address */
+	smbus->src_slave_addr = DEFAULT_SLAVE_ADDRESS;
+
 	return smbus;
 }
 
@@ -458,4 +462,10 @@ void mctp_smbus_free(struct mctp_binding_smbus *smbus)
 	}
 
 	__mctp_free(smbus);
+}
+
+void mctp_smbus_set_src_slave_addr(struct mctp_binding_smbus *smbus,
+				   uint8_t slave_addr)
+{
+	smbus->src_slave_addr = slave_addr;
 }
