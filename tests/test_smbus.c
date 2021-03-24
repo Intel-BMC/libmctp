@@ -28,8 +28,6 @@
 
 uint8_t fn_call_cnt;
 
-uint8_t fn_call_cnt_pec;
-
 struct smbus_test_ctx {
 	int fd;
 	struct mctp *mctp;
@@ -37,9 +35,6 @@ struct smbus_test_ctx {
 } __attribute__((packed));
 
 uint8_t payload[] = { 0x01, TEST_EID, TEST_TARGET_EID, 0xB0, 0, 129, 0, 1, 2 };
-
-uint8_t payload_neg[] = { 0x1e, 0x0f, 0x069, 0x11, 0x61, 0x08,
-			  0x09, 0x8d, 0x00,  0x8e, 0x0f, 0x99 };
 
 static struct smbus_test_ctx smbus_ctx = { .fd = -1,
 					   .mctp = NULL,
@@ -49,14 +44,16 @@ static int stubbed_smbus_fd = 5;
 static int16_t pkt_index;
 
 static uint8_t test_packet[][12] = {
-	{ 0xE, 0x09, 0x11, 0x01, 0x00, 0x08, 0xC8, 0x00, 0x80, 0x04, 0x00,
-	  0x22 },
-	{ 0x0F, 0x09, 0x11, 0x01, 0x00, 0x08, 0xC8, 0x00, 0x83, 0x04, 0x00,
-	  0x80 },
-	{ 0x0F, 0x09, 0x11, 0x01, 0x00, 0x08, 0xC8, 0x00, 0x84, 0x04, 0x00,
-	  0x96 },
-	{ 0x0F, 0x09, 0x11, 0x01, 0x00, 0x08, 0xC8, 0x00, 0x85, 0x04, 0x00,
-	  0xFD },
+	{ 0x02, 0x0f, 0x069, 0x11, 0x21, 0x08, 0x09, 0x89, 0x00, 0x8a, 0x0b,
+	  0x51 },
+	{ 0x04, 0x0f, 0x069, 0x11, 0x31, 0x08, 0x09, 0x8a, 0x00, 0x8b, 0x0c,
+	  0x61 },
+	{ 0x06, 0x0f, 0x069, 0x11, 0x41, 0x08, 0x09, 0x8b, 0x00, 0x8c, 0x0d,
+	  0x71 },
+	{ 0x0e, 0x0f, 0x069, 0x11, 0x51, 0x08, 0x09, 0x8c, 0x00, 0x8d, 0x0e,
+	  0x81 },
+	{ 0x1e, 0x0f, 0x069, 0x11, 0x61, 0x08, 0x09, 0x8d, 0x00, 0x8e, 0x0f,
+	  0x99 },
 };
 
 int open(const char *_pathname, int _flags)
@@ -264,123 +261,13 @@ static void run_smbus_rx_test_negative(mctp_rx_fn rx_fn)
 	destroy_smbus_test_ctx(&smbus_ctx);
 }
 
-static void run_smbus_rx_test_pec(mctp_rx_fn rx_fn)
-{
-	int rc;
-	struct mctp_smbus_pkt_private ext_params;
-	struct mctp_pktbuf pkt;
-
-	init_smbus_test(&smbus_ctx);
-
-	ext_params.fd = stubbed_smbus_fd;
-	ext_params.mux_flags = IS_MUX_PORT;
-	ext_params.mux_hold_timeout = 1000;
-	ext_params.slave_addr = 0x11;
-
-	pkt.msg_binding_private = (void *)&ext_params;
-	pkt.next = NULL;
-
-	smbus_ctx.bind_smbus->rx_pkt = &pkt;
-
-	memcpy(smbus_ctx.bind_smbus->rxbuf, &test_packet[0],
-	       sizeof(test_packet[0]));
-
-	rc = mctp_smbus_register_bus(smbus_ctx.bind_smbus, smbus_ctx.mctp,
-				     TEST_EID);
-	assert(rc == 0);
-
-	mctp_set_rx_all(smbus_ctx.mctp, rx_fn, NULL);
-
-	mctp_smbus_read(smbus_ctx.bind_smbus);
-
-	destroy_smbus_test_ctx(&smbus_ctx);
-}
-
-static void test_smbus_rx_pec(mctp_eid_t src, void *data, void *msg, size_t len,
-			      bool tag_owner, uint8_t tag, void *ext)
-{
-	struct mctp_smbus_pkt_private *pkt_pvt =
-		((struct mctp_smbus_pkt_private *)ext);
-
-	uint8_t expected[] = { 0x04, 0x00, 0x22 };
-	int rc;
-
-	assert(src != 1);
-	assert(pkt_pvt->fd != -1);
-
-	assert(len == 3);
-
-	rc = memcmp(expected, (uint8_t *)msg, len);
-	assert(rc == 0);
-}
-
-static void run_smbus_rx_test_negative_pec(mctp_rx_fn rx_fn)
-{
-	int rc;
-	struct mctp_smbus_pkt_private ext_params;
-	struct mctp_pktbuf pkt;
-
-	init_smbus_test(&smbus_ctx);
-
-	ext_params.fd = stubbed_smbus_fd;
-	ext_params.mux_flags = IS_MUX_PORT;
-	ext_params.mux_hold_timeout = 1000;
-	ext_params.slave_addr = 0x11;
-
-	pkt.msg_binding_private = (void *)&ext_params;
-	pkt.next = NULL;
-
-	smbus_ctx.bind_smbus->rx_pkt = &pkt;
-
-	memcpy(smbus_ctx.bind_smbus->rxbuf, &payload_neg, sizeof(payload_neg));
-
-	rc = mctp_smbus_register_bus(smbus_ctx.bind_smbus, smbus_ctx.mctp,
-				     TEST_EID);
-	assert(rc == 0);
-
-	mctp_set_rx_all(smbus_ctx.mctp, rx_fn, NULL);
-
-	assert(mctp_smbus_read(smbus_ctx.bind_smbus) == -1);
-
-	/*
-	* since for negative cases the call should not happen
-	* so this counter wont be incremented
-	*/
-	assert(fn_call_cnt_pec == 0);
-
-	destroy_smbus_test_ctx(&smbus_ctx);
-}
-
-static void negative_text_smbus_rx_pec(mctp_eid_t src, void *data, void *msg,
-				       size_t len, bool tag_owner, uint8_t tag,
-				       void *ext)
-{
-	/*change function call count*/
-	fn_call_cnt_pec++;
-}
-
-static void run_smbus_src_slave_addr_test(void)
-{
-	init_smbus_test(&smbus_ctx);
-	mctp_smbus_set_src_slave_addr(smbus_ctx.bind_smbus, 0x11);
-	assert(smbus_ctx.bind_smbus->src_slave_addr == 0x11);
-	destroy_smbus_test_ctx(&smbus_ctx);
-}
-
 int main(void)
 {
 	run_smbus_tx_test(NULL);
 	run_smbus_rx_test(test_smbus_rx);
 
-	run_smbus_rx_test_pec(test_smbus_rx_pec);
-
-	/*Negative test case*/
+	/*Negetive test case*/
 	run_smbus_rx_test_negative(negative_text_smbus_rx);
-
-	run_smbus_rx_test_negative_pec(negative_text_smbus_rx_pec);
-
-	/*Set slave address*/
-	run_smbus_src_slave_addr_test();
 
 	return 0;
 }
