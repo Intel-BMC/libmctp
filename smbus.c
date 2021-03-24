@@ -307,18 +307,15 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 {
 	ssize_t len = 0;
-	int ret;
 	struct mctp_smbus_header_rx *smbus_hdr_rx;
 	struct mctp_smbus_pkt_private pvt_data;
-	size_t rxbuflen = 0;
-	uint8_t rx_pec;
 #ifdef I2C_M_HOLD
 	struct mctp_hdr *mctp_hdr;
 	bool eom = false;
 #endif
 
 	smbus_hdr_rx = (void *)smbus->rxbuf;
-	ret = lseek(smbus->in_fd, 0, SEEK_SET);
+	int ret = lseek(smbus->in_fd, 0, SEEK_SET);
 	if (ret < 0) {
 		mctp_prerr("Failed to seek");
 		return -1;
@@ -365,14 +362,6 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 		return 0;
 	}
 
-	rxbuflen = sizeof(*smbus_hdr_rx) + smbus_hdr_rx->byte_count - 1;
-	rx_pec = pec_calculate(0, smbus->rxbuf, rxbuflen - 1);
-	if (rx_pec != smbus->rxbuf[rxbuflen - 1]) {
-		mctp_prerr("Invalid PEC value: expected: 0x%02x, found 0x%02x",
-			   rx_pec, smbus->rxbuf[rxbuflen - 1]);
-
-		return -1;
-	}
 	smbus->rx_pkt = mctp_pktbuf_alloc(&(smbus->binding), 0);
 	assert(smbus->rx_pkt);
 
