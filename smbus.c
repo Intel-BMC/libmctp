@@ -309,6 +309,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	ssize_t len = 0;
 	struct mctp_smbus_header_rx *smbus_hdr_rx;
 	struct mctp_smbus_pkt_private pvt_data;
+	uint8_t rx_pec;
 #ifdef I2C_M_HOLD
 	struct mctp_hdr *mctp_hdr;
 	bool eom = false;
@@ -360,6 +361,14 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 			   smbus_hdr_rx->command_code);
 		/* Not a payload intended for us */
 		return 0;
+	}
+
+	rx_pec = pec_calculate(0, smbus->rxbuf, len - 1);
+	if (rx_pec != smbus->rxbuf[len - 1]) {
+		mctp_prerr("Invalid PEC value: expected: 0x%02x, found 0x%02x",
+			   rx_pec, smbus->rxbuf[len - 1]);
+
+		return -1;
 	}
 
 	smbus->rx_pkt = mctp_pktbuf_alloc(&(smbus->binding), 0);
