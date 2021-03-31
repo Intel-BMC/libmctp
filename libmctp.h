@@ -91,6 +91,14 @@ int mctp_register_bus(struct mctp *mctp, struct mctp_binding *binding,
 int mctp_register_bus_dynamic_eid(struct mctp *mctp,
 				  struct mctp_binding *binding);
 
+/* Sets eid for endpoints registered with mctp_register_bus_dynamic_eid()
+ *
+ * For applications that do not implement MCTP control protocol this function
+ * shall be used immediately after endpoint is discovered to set up currently
+ * assigned eid. This will make mctp_bus_rx() recognize endpoint's packets.
+ */
+int mctp_dynamic_eid_set(struct mctp_binding *binding, mctp_eid_t eid);
+
 /* Create a simple bidirectional bridge between busses.
  *
  * In this mode, the MCTP stack is initialised as a bridge. There is no EID

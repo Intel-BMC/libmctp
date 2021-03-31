@@ -351,6 +351,15 @@ int mctp_register_bus_dynamic_eid(struct mctp *mctp,
 	return register_bus(mctp, binding);
 }
 
+int mctp_dynamic_eid_set(struct mctp_binding *binding, mctp_eid_t eid)
+{
+	if (binding->bus[0].has_static_eid)
+		return -1;
+
+	binding->bus[0].eid = eid;
+	return 0;
+}
+
 static bool mctp_eid_is_special(mctp_eid_t eid)
 {
 	return eid == MCTP_EID_NULL || eid == MCTP_EID_BROADCAST;
