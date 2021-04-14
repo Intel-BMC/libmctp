@@ -96,6 +96,7 @@ static uint8_t calculate_pec_byte(uint8_t *buf, size_t len, uint8_t address)
 	return pec;
 }
 
+#ifdef I2C_M_HOLD
 static void cleanup_reserve_mux_info(void)
 {
 	reserve_mux_info.fd = -1;
@@ -103,6 +104,7 @@ static void cleanup_reserve_mux_info(void)
 	reserve_mux_info.mux_flags = 0;
 	reserve_mux_info.slave_addr = 0;
 }
+#endif
 
 int mctp_smbus_close_mux(const int fd, const int address)
 {
@@ -144,6 +146,7 @@ static int smbus_pull_model_unhold_mux(void)
 static bool pull_model_active;
 int mctp_smbus_init_pull_model(const struct mctp_smbus_pkt_private *prvt)
 {
+#ifdef I2C_M_HOLD
 	int rc = -1;
 
 	if (pull_model_active) {
@@ -163,10 +166,14 @@ int mctp_smbus_init_pull_model(const struct mctp_smbus_pkt_private *prvt)
 	}
 	pull_model_active = true;
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 int mctp_smbus_exit_pull_model(const struct mctp_smbus_pkt_private *prvt)
 {
+#ifdef I2C_M_HOLD
 	int rc = -1;
 
 	if (!(pull_model_active &&
@@ -187,6 +194,9 @@ int mctp_smbus_exit_pull_model(const struct mctp_smbus_pkt_private *prvt)
 	pull_model_active = false;
 	cleanup_reserve_mux_info();
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
