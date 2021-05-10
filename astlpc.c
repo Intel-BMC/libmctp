@@ -235,6 +235,11 @@ static void mctp_astlpc_rx_start(struct mctp_binding_astlpc *astlpc)
 	}
 	len = be32toh(len);
 
+	if (len < sizeof(struct mctp_hdr)) {
+		mctp_prwarn("invalid RX len 0x%x", len);
+		return;
+	}
+
 	if (len > tx_size - 4) {
 		mctp_prwarn("invalid RX len 0x%x", len);
 		return;

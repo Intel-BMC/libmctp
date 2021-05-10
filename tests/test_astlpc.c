@@ -13,6 +13,7 @@
 #endif
 
 #define RX_BUFFER_DATA 0x100 + 4 + 4
+#define TX_BUFFER_DATA 0x200
 
 #include <assert.h>
 #include <stdint.h>
@@ -21,6 +22,11 @@
 #include <string.h>
 
 /* Hack: Needs to be in sync with astlpc.c */
+#define binding_to_mmio(b)                                                     \
+	container_of(b, struct mctp_binding_astlpc_mmio, astlpc)
+
+uint8_t g_received_packet_count = 0;
+
 struct mctp_binding_astlpc {
 	struct mctp_binding binding;
 
@@ -52,15 +58,13 @@ struct mctp_binding_astlpc {
 
 struct mctp_binding_astlpc_mmio {
 	struct mctp_binding_astlpc astlpc;
+	bool bmc;
 
 	uint8_t kcs[2];
 
 	size_t lpc_size;
 	uint8_t *lpc;
 };
-
-#define binding_to_mmio(b)                                                     \
-	container_of(b, struct mctp_binding_astlpc_mmio, astlpc)
 
 int mctp_astlpc_mmio_kcs_read(void *data, enum mctp_binding_astlpc_kcs_reg reg,
 			      uint8_t *val)
@@ -72,8 +76,10 @@ int mctp_astlpc_mmio_kcs_read(void *data, enum mctp_binding_astlpc_kcs_reg reg,
 	mctp_prdebug("%s: 0x%hhx from %s", __func__, *val,
 		     reg ? "status" : "data");
 
-	if (reg == MCTP_ASTLPC_KCS_REG_DATA)
-		mmio->kcs[MCTP_ASTLPC_KCS_REG_STATUS] &= ~KCS_STATUS_IBF;
+	if (reg == MCTP_ASTLPC_KCS_REG_DATA) {
+		uint8_t flag = mmio->bmc ? KCS_STATUS_IBF : KCS_STATUS_OBF;
+		(mmio->kcs)[MCTP_ASTLPC_KCS_REG_STATUS] &= ~flag;
+	}
 
 	return 0;
 }
@@ -132,6 +138,8 @@ static void rx_message(uint8_t eid, void *data, void *msg, size_t len,
 	type = *(uint8_t *)msg;
 
 	mctp_prdebug("MCTP message received: len %zd, type %d", len, type);
+
+	g_received_packet_count++;
 }
 
 const struct mctp_binding_astlpc_ops mctp_binding_astlpc_mmio_ops = {
@@ -154,6 +162,7 @@ int main(void)
 
 	mmio.lpc_size = 1 * 1024 * 1024;
 	mmio.lpc = calloc(1, mmio.lpc_size);
+	mmio.bmc = true;
 
 	mctp_set_log_stdio(MCTP_LOG_DEBUG);
 
@@ -212,6 +221,36 @@ int main(void)
 
 	/* Verify it's the packet we expect */
 	assert(!memcmp(mmio.lpc + RX_BUFFER_DATA, &msg[MCTP_BTU], MCTP_BTU));
+
+	mctp_prdebug("Host sends dummy packets..");
+	mmio.bmc = false;
+
+	uint8_t valid_packet[] = { 0x00, 0x00, 0x00, 0x07, 0x01, 0x08,
+				   0x09, 0xC8, 0x00, 0x81, 0x02 };
+	memset(mmio.lpc + TX_BUFFER_DATA, 0, sizeof(valid_packet));
+	memcpy(mmio.lpc + TX_BUFFER_DATA, &valid_packet[0],
+	       sizeof(valid_packet));
+
+	mmio.kcs[MCTP_ASTLPC_KCS_REG_STATUS] |= KCS_STATUS_IBF;
+	mmio.kcs[MCTP_ASTLPC_KCS_REG_DATA] = 0x01;
+	rc = mctp_astlpc_poll(astlpc);
+	assert(rc == 0);
+	assert(g_received_packet_count == 1);
+
+	uint8_t invalid_packet[] = { 0x00, 0x00, 0x00, 0x03, 0x01, 0x08, 0x09 };
+	memset(mmio.lpc + TX_BUFFER_DATA, 0, sizeof(invalid_packet));
+	memcpy(mmio.lpc + TX_BUFFER_DATA, &invalid_packet[0],
+	       sizeof(invalid_packet));
+
+	mmio.kcs[MCTP_ASTLPC_KCS_REG_STATUS] |= KCS_STATUS_IBF;
+	mmio.kcs[MCTP_ASTLPC_KCS_REG_DATA] = 0x01;
+	rc = mctp_astlpc_poll(astlpc);
+	assert(rc == 0);
+	/* Since we transmitted a 3 byte packet to BMC, BMC should discard
+         * the packet since size is less than MCTP header. Confirm using the
+         * received packet counter which get incremented only on reception of
+         * valid MCTP message */
+	assert(g_received_packet_count == 1);
 
 	mctp_astlpc_destroy(astlpc);
 	mctp_destroy(mctp);
