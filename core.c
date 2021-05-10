@@ -16,6 +16,8 @@
 #include "libmctp-log.h"
 #include "libmctp-cmds.h"
 
+#define MAX_SIZE_T_SIZE (size_t) - 1
+
 /* Internal data structures */
 
 struct mctp_bus {
@@ -256,9 +258,18 @@ static int mctp_msg_ctx_add_pkt(struct mctp_msg_ctx *ctx,
 {
 	size_t len;
 
+	if (mctp_pktbuf_size(pkt) < sizeof(struct mctp_hdr)) {
+		return -1;
+	}
+
 	len = mctp_pktbuf_size(pkt) - sizeof(struct mctp_hdr);
 
-	if (ctx->buf_size + len > ctx->buf_alloc_size) {
+	if (len > MAX_SIZE_T_SIZE - ctx->buf_size) {
+		/* If len + ctx->buf_size overflows, return */
+		return -1;
+	}
+
+	while (ctx->buf_size + len > ctx->buf_alloc_size) {
 		size_t new_alloc_size;
 		void *lbuf;
 
