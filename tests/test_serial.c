@@ -109,6 +109,10 @@ int main(void)
 	mctp_register_bus(scenario[1].mctp, mctp_binding_serial_core(b->serial),
 			  9);
 
+	/* Set a 4500 bytes/packet limit for B */
+        const uint32_t max_message_size = 4500;
+	mctp_set_max_message_size(scenario[1].mctp, max_message_size);
+
 	/* Transmit a message from A to B */
 	rc = mctp_message_tx(scenario[0].mctp, 9, mctp_msg_src,
 			     sizeof(mctp_msg_src), true, 0, NULL);
@@ -118,6 +122,19 @@ int main(void)
 	seen = false;
 	mctp_serial_read(b->serial);
 	assert(seen);
+
+	/* Negative testcase: In case of a large payload receieved, buffer
+         * allocations will fail and thus the message received callback
+         * shouldn't be invoked - i.e. seen flag will remain false */
+        const uint32_t large_payload_size = max_message_size + 100;
+	uint8_t large_payload[large_payload_size];
+	rc = mctp_message_tx(scenario[0].mctp, 9, large_payload,
+			     sizeof(large_payload), true, 0, NULL);
+	assert(rc == 0);
+
+	seen = false;
+	mctp_serial_read(b->serial);
+	assert(seen == false);
 
 	mctp_serial_destroy(scenario[1].binding.serial);
 	mctp_destroy(scenario[1].mctp);
