@@ -214,7 +214,6 @@ static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 		(struct mctp_astpcie_pkt_private *)pkt->msg_binding_private;
 	struct mctp_binding_astpcie *astpcie = binding_to_astpcie(b);
 	struct mctp_pcie_hdr *hdr = (struct mctp_pcie_hdr *)pkt->data;
-	struct mctp_hdr *mctp_hdr = mctp_pktbuf_hdr(pkt);
 	uint16_t payload_len_dw = mctp_astpcie_tx_get_payload_size_dw(pkt);
 	uint8_t pad = mctp_astpcie_tx_get_pad_len(pkt);
 	ssize_t write_len, len;
@@ -298,7 +297,6 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 	struct mctp_astpcie_pkt_private pkt_prv;
 	struct mctp_pktbuf *pkt;
 	struct mctp_pcie_hdr *hdr;
-	struct mctp_hdr *mctp_hdr;
 	size_t read_len, payload_len;
 	int rc;
 
@@ -342,7 +340,6 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 		return -1;
 	}
 
-	mctp_hdr = mctp_pktbuf_hdr(pkt);
 	memcpy(pkt->msg_binding_private, &pkt_prv, sizeof(pkt_prv));
 
 	mctp_bus_rx(&astpcie->binding, pkt);
