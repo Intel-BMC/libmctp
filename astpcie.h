@@ -75,6 +75,9 @@ struct mctp_pcie_hdr {
 #define PCIE_HDR_DATA_LEN_SHIFT 0
 #define PCIE_HDR_DATA_LEN_MASK 0xff03
 
+#define PCIE_MAX_DATA_LEN_DW 1024
+#define PCIE_MAX_DATA_LEN (PCIE_MAX_DATA_LEN_DW * sizeof(uint32_t))
+
 #define PCIE_GET_DATA_LEN(x)                                                   \
 	be16toh(((x->mbz_attr_length >> PCIE_HDR_DATA_LEN_SHIFT) &             \
 		 PCIE_HDR_DATA_LEN_MASK))

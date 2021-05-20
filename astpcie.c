@@ -245,10 +245,14 @@ static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 
 static size_t mctp_astpcie_rx_get_payload_size(struct mctp_pcie_hdr *hdr)
 {
-	size_t len = PCIE_GET_DATA_LEN(hdr) * sizeof(uint32_t);
+	size_t len_dw = PCIE_GET_DATA_LEN(hdr);
 	uint8_t pad = PCIE_GET_PAD_LEN(hdr);
 
-	return len - pad;
+	/* According to PCIe Spec, 0 means 1024 DW */
+	if (len_dw == 0)
+		len_dw = PCIE_MAX_DATA_LEN_DW;
+
+	return len_dw * sizeof(uint32_t) - pad;
 }
 
 /*
@@ -364,6 +368,9 @@ struct mctp_binding_astpcie *mctp_astpcie_init(void)
 	astpcie->binding.tx = mctp_astpcie_tx;
 	astpcie->binding.start = mctp_astpcie_start;
 	astpcie->binding.pkt_size = MCTP_PACKET_SIZE(MCTP_BTU);
+
+	assert(astpcie->binding.pkt_size - sizeof(struct mctp_hdr) <=
+	       PCIE_MAX_DATA_LEN);
 
 	/* where mctp_hdr starts in in/out comming data
 	 * note: there are two approaches: first (used here) that core
