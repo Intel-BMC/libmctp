@@ -420,12 +420,12 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	return 0;
 }
 
-int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd)
+void mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd)
 {
 	smbus->in_fd = fd;
 }
 
-int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd)
+void mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd)
 {
 	smbus->out_fd = fd;
 }

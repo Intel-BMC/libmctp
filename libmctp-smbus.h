@@ -55,8 +55,8 @@ int mctp_smbus_init_pull_model(const struct mctp_smbus_pkt_private *prvt);
 int mctp_smbus_exit_pull_model(const struct mctp_smbus_pkt_private *prvt);
 void mctp_smbus_free(struct mctp_binding_smbus *smbus);
 int mctp_smbus_close_mux(const int fd, const int address);
-int mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd);
-int mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd);
+void mctp_smbus_set_in_fd(struct mctp_binding_smbus *smbus, int fd);
+void mctp_smbus_set_out_fd(struct mctp_binding_smbus *smbus, int fd);
 void mctp_smbus_set_src_slave_addr(struct mctp_binding_smbus *smbus,
 				   uint8_t slave_addr);
 #ifdef __cplusplus
