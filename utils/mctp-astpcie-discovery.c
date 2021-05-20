@@ -182,6 +182,8 @@ static void discovery_with_notify_flow(struct mctp_binding_astpcie *astpcie,
 	struct mctp_astpcie_pkt_private pkt_prv;
 	int rc;
 
+	memset(&req, 0, sizeof(req));
+
 	ctx->discovered = false;
 
 	req.hdr.ic_msg_type = MCTP_CTRL_HDR_MSG_TYPE;
