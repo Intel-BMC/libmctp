@@ -189,8 +189,9 @@ void test_prv_data_deallocated(void)
 
 static const struct {
 	void (*test)(void);
-} msg_binding_private_tests[] = { test_null_prv_data, test_typical_prv_data,
-				  test_prv_data_deallocated };
+} msg_binding_private_tests[] = { { test_null_prv_data },
+				  { test_typical_prv_data },
+				  { test_prv_data_deallocated } };
 
 int main()
 {
