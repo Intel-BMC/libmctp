@@ -530,7 +530,14 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 	void *p;
 	int rc;
 
-	assert(bus);
+	if (!bus) {
+		mctp_prerr("%s: bus is a NULL pointer.", __func__);
+		return;
+	}
+	if (!pkt) {
+		mctp_prerr("%s: pkt is a NULL pointer.", __func__);
+		return;
+	}
 
 	hdr = mctp_pktbuf_hdr(pkt);
 
