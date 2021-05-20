@@ -768,12 +768,6 @@ int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg, size_t len,
 				      tag_owner, tag, msg_binding_private);
 }
 
-static inline bool mctp_ctrl_cmd_is_control(struct mctp_ctrl_msg_hdr *hdr)
-{
-	return ((hdr->command_code > MCTP_CTRL_CMD_RESERVED) &&
-		(hdr->command_code < MCTP_CTRL_CMD_MAX));
-}
-
 static inline bool mctp_ctrl_cmd_is_transport(struct mctp_ctrl_msg_hdr *hdr)
 {
 	return ((hdr->command_code >= MCTP_CTRL_CMD_FIRST_TRANSPORT) &&
