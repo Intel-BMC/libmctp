@@ -90,8 +90,6 @@ ssize_t read(int _fd, void *_buf, size_t _count)
 
 ssize_t write(int _fd, void *_data, size_t _data_size)
 {
-	static int write_index;
-
 	if (_fd != stubbed_smbus_fd)
 		return -1;
 
@@ -119,9 +117,6 @@ int ioctl(int _fd, unsigned long _request, void *_data)
 
 static void init_smbus_test(struct smbus_test_ctx *p_ctx)
 {
-	struct mctp_binding *binding;
-	struct mctp_binding_smbus *smbus;
-
 	mctp_set_log_stdio(MCTP_LOG_DEBUG);
 
 	p_ctx->mctp = mctp_init();
