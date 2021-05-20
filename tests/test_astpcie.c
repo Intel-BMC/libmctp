@@ -129,8 +129,6 @@ ssize_t read(int fd, void *buf, size_t count)
 
 ssize_t write(int __fd, void *data, size_t data_size)
 {
-	static int write_index;
-
 	assert(__fd == stubbed_fd);
 
 	return 0;
@@ -273,9 +271,6 @@ static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
 static void test_rx_tag(mctp_eid_t src, void *data, void *msg, size_t len,
 			bool tag_owner, uint8_t tag, void *ext)
 {
-	struct mctp_astpcie_pkt_private *pkt_prv =
-		(struct mctp_astpcie_pkt_private *)ext;
-
 	mctp_prdebug("rx tag: 0x%.2x", tag);
 
 	assert(tag == 7);
