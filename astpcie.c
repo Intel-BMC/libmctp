@@ -41,11 +41,14 @@ int mctp_astpcie_get_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
 
 	get_eid_info.count = count;
 	get_eid_info.start_eid = start_eid;
-	get_eid_info.ptr = (uint64_t)eid_info;
+	get_eid_info.ptr = (uintptr_t)eid_info;
 
 	rc = ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_GET_EID_INFO, &get_eid_info);
-	if (!rc)
-		memcpy(eid_info, (void *)get_eid_info.ptr, get_eid_info.count);
+	if (!rc) {
+		uintptr_t ptr = (uintptr_t)get_eid_info.ptr;
+
+		memcpy(eid_info, (void *)ptr, get_eid_info.count);
+	}
 
 	return rc;
 }
@@ -56,7 +59,7 @@ int mctp_astpcie_set_eid_info_ioctl(struct mctp_binding_astpcie *astpcie,
 	struct aspeed_mctp_set_eid_info set_eid_info;
 
 	set_eid_info.count = count;
-	set_eid_info.ptr = (uint64_t)eid_info;
+	set_eid_info.ptr = (uintptr_t)eid_info;
 
 	return ioctl(astpcie->fd, ASPEED_MCTP_IOCTL_SET_EID_INFO,
 		     &set_eid_info);
