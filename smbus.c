@@ -353,7 +353,7 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 
 	else if (smbus_hdr_rx->byte_count != (len - sizeof(*smbus_hdr_rx))) {
 		/* Got an incorrectly sized payload */
-		mctp_prerr("Got smbus payload sized %lu, expecting %d",
+		mctp_prerr("Got smbus payload sized %zu, expecting %hhu",
 			   len - sizeof(*smbus_hdr_rx),
 			   smbus_hdr_rx->byte_count);
 		return 0;
