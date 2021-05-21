@@ -168,7 +168,7 @@ static void dump_payload(uint8_t *payload, size_t len)
 	int i;
 
 	for (i = 0; i < len; i++)
-		pos += sprintf(dump + pos, "0x%.2x ", payload[i]);
+		pos += sprintf(dump + pos, "%#02x ", payload[i]);
 
 	mctp_prdebug("payload: %s", dump);
 }
@@ -180,7 +180,7 @@ static void test_rx_verify_payload1(mctp_eid_t src, void *data, void *msg,
 	uint8_t expected_data[] = { 0x00, 0x8a, 0x0b };
 	int rc;
 
-	mctp_prdebug("rx payload len: 0x%.2lx", len);
+	mctp_prdebug("rx payload len: %#zx", len);
 
 	assert(len == 3);
 
@@ -200,7 +200,7 @@ static void test_rx_verify_payload2(mctp_eid_t src, void *data, void *msg,
 				    0x08, 0x02, 0x06, 0x01 };
 	int rc;
 
-	mctp_prdebug("rx payload len: 0x%.2lx", len);
+	mctp_prdebug("rx payload len: %#zx", len);
 
 	assert(len == 22);
 
@@ -218,7 +218,7 @@ static void test_rx_remote_id1(mctp_eid_t src, void *data, void *msg,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx remote id: 0x%.2x", pkt_prv->remote_id);
+	mctp_prdebug("rx remote id: %#04x", pkt_prv->remote_id);
 
 	assert(pkt_prv->remote_id == 0x92);
 }
@@ -230,7 +230,7 @@ static void test_rx_remote_id2(mctp_eid_t src, void *data, void *msg,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx remote id: 0x%.2x", pkt_prv->remote_id);
+	mctp_prdebug("rx remote id: %#04x", pkt_prv->remote_id);
 
 	assert(pkt_prv->remote_id == 0x34);
 }
@@ -241,7 +241,7 @@ static void test_rx_routing1(mctp_eid_t src, void *data, void *msg, size_t len,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+	mctp_prdebug("rx routing: %#x", pkt_prv->routing);
 
 	assert(pkt_prv->routing == PCIE_BROADCAST_FROM_RC);
 }
@@ -252,7 +252,7 @@ static void test_rx_routing2(mctp_eid_t src, void *data, void *msg, size_t len,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+	mctp_prdebug("rx routing: %#x", pkt_prv->routing);
 
 	assert(pkt_prv->routing == PCIE_ROUTE_BY_ID);
 }
@@ -263,7 +263,7 @@ static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+	mctp_prdebug("rx routing: %#x", pkt_prv->routing);
 
 	assert(pkt_prv->routing == PCIE_ROUTE_TO_RC);
 }
@@ -271,7 +271,7 @@ static void test_rx_routing3(mctp_eid_t src, void *data, void *msg, size_t len,
 static void test_rx_tag(mctp_eid_t src, void *data, void *msg, size_t len,
 			bool tag_owner, uint8_t tag, void *ext)
 {
-	mctp_prdebug("rx tag: 0x%.2x", tag);
+	mctp_prdebug("rx tag: %#02x", tag);
 
 	assert(tag == 7);
 }
@@ -283,7 +283,7 @@ static void negative_test_rx_routing1(mctp_eid_t src, void *data, void *msg,
 	struct mctp_astpcie_pkt_private *pkt_prv =
 		(struct mctp_astpcie_pkt_private *)ext;
 
-	mctp_prdebug("rx routing: 0x%.2x", pkt_prv->routing);
+	mctp_prdebug("rx routing: %#x", pkt_prv->routing);
 
 	assert(0);
 }
