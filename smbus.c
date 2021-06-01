@@ -104,32 +104,15 @@ static void cleanup_reserve_mux_info(void)
 	reserve_mux_info.mux_flags = 0;
 	reserve_mux_info.slave_addr = 0;
 }
-#endif
-
-int mctp_smbus_close_mux(const int fd, const int address)
-{
-	uint8_t txbuf[2] = { 0 };
-	struct i2c_msg msg[1] = {
-		{ .addr = address, .flags = 0, .len = 2, .buf = txbuf }
-	};
-	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 1 };
-
-	return ioctl(fd, I2C_RDWR, &msgrdwr);
-}
 
 static int smbus_model_mux(const uint16_t holdtimeout)
 {
-#ifdef I2C_M_HOLD
-
 	struct i2c_msg holdmsg = { 0, I2C_M_HOLD, sizeof(holdtimeout),
 				   (uint8_t *)&holdtimeout };
 
 	struct i2c_rdwr_ioctl_data msgrdwr = { &holdmsg, 1 };
 
 	return ioctl(reserve_mux_info.fd, I2C_RDWR, &msgrdwr);
-#else
-	return 0;
-#endif
 }
 
 static int smbus_pull_model_hold_mux(void)
@@ -144,6 +127,23 @@ static int smbus_pull_model_unhold_mux(void)
 }
 
 static bool pull_model_active;
+#endif
+
+int mctp_smbus_close_mux(const int fd, const int address)
+{
+#ifdef I2C_M_HOLD
+	uint8_t txbuf[2] = { 0 };
+	struct i2c_msg msg[1] = {
+		{ .addr = address, .flags = 0, .len = 2, .buf = txbuf }
+	};
+	struct i2c_rdwr_ioctl_data msgrdwr = { &msg[0], 1 };
+
+	return ioctl(fd, I2C_RDWR, &msgrdwr);
+#else
+	return 0;
+#endif
+}
+
 int mctp_smbus_init_pull_model(const struct mctp_smbus_pkt_private *prvt)
 {
 #ifdef I2C_M_HOLD
@@ -270,9 +270,9 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	struct mctp_smbus_header_tx *smbus_hdr_tx = (void *)smbus->txbuf;
 	struct mctp_smbus_pkt_private *pkt_pvt =
 		(struct mctp_smbus_pkt_private *)pkt->msg_binding_private;
-	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
 
 #ifdef I2C_M_HOLD
+	struct mctp_hdr *mctp_hdr = (void *)(&pkt->data[pkt->start]);
 	/* Set mux_flags only for EOM packets */
 	if (!(mctp_hdr->flags_seq_tag & MCTP_HDR_FLAG_EOM)) {
 		pkt_pvt->mux_flags = 0;
