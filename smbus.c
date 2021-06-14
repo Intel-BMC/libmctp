@@ -382,12 +382,16 @@ int mctp_smbus_read(struct mctp_binding_smbus *smbus)
 	}
 
 	smbus->rx_pkt = mctp_pktbuf_alloc(&(smbus->binding), 0);
-	assert(smbus->rx_pkt);
+	if (!smbus->rx_pkt) {
+		mctp_prerr("Cannot allocate memory");
+		return -1;
+	}
 
 	if (mctp_pktbuf_push(
 		    smbus->rx_pkt, &smbus->rxbuf[sizeof(*smbus_hdr_rx)],
 		    len - sizeof(*smbus_hdr_rx) - SMBUS_PEC_BYTE_SIZE) != 0) {
-		mctp_prerr("Can't push tok pktbuf: %m");
+		mctp_prerr("Can't push to pktbuf: %m");
+		mctp_pktbuf_free(smbus->rx_pkt);
 		return -1;
 	}
 
