@@ -164,6 +164,8 @@ int main(void)
 	mmio.lpc = calloc(1, mmio.lpc_size);
 	mmio.bmc = true;
 
+	assert(mmio.lpc);
+
 	mctp_set_log_stdio(MCTP_LOG_DEBUG);
 
 	mctp = mctp_init();
@@ -173,6 +175,7 @@ int main(void)
 
 	astlpc = mctp_astlpc_init_ops(&mctp_binding_astlpc_mmio_ops, &mmio,
 				      NULL);
+	assert(astlpc);
 
 	mctp_register_bus(mctp, &astlpc->binding, 8);
 
