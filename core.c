@@ -316,6 +316,9 @@ struct mctp *mctp_init(void)
 	struct mctp *mctp;
 
 	mctp = __mctp_alloc(sizeof(*mctp));
+	if (!mctp)
+		return NULL;
+
 	memset(mctp, 0, sizeof(*mctp));
 
 	mctp->max_message_size = MCTP_MAX_MESSAGE_SIZE;
@@ -646,6 +649,16 @@ out:
 	mctp_pktbuf_free(pkt);
 }
 
+static void flush_all_messages(struct mctp_bus *bus)
+{
+	struct mctp_pktbuf *pkt;
+
+	while ((pkt = bus->tx_queue_head)) {
+		bus->tx_queue_head = pkt->next;
+		mctp_pktbuf_free(pkt);
+	}
+}
+
 static void flush_message(struct mctp_bus *bus)
 {
 	struct mctp_pktbuf *pkt;
@@ -729,6 +742,12 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 
 		pkt = mctp_pktbuf_alloc(bus->binding,
 					payload_len + sizeof(*hdr));
+		if (!pkt) {
+			/* Low on memory. Better to flush all messages in tx queue */
+			flush_all_messages(bus);
+			return -1;
+		}
+
 		hdr = mctp_pktbuf_hdr(pkt);
 
 		/* store binding specific private data */
