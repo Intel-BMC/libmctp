@@ -300,7 +300,8 @@ int mctp_astpcie_rx(struct mctp_binding_astpcie *astpcie)
 	struct mctp_astpcie_pkt_private pkt_prv;
 	struct mctp_pktbuf *pkt;
 	struct mctp_pcie_hdr *hdr;
-	size_t read_len, payload_len;
+	ssize_t read_len;
+	size_t payload_len;
 	int rc;
 
 	read_len = read(astpcie->fd, &data, sizeof(data));
