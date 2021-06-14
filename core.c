@@ -577,6 +577,10 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 		} else {
 			ctx = mctp_msg_ctx_create(mctp, hdr->src, hdr->dest,
 						  tag_owner, tag);
+			if (!ctx) {
+				mctp_prerr("Context buffers exhausted");
+				goto out;
+			}
 		}
 
 		rc = mctp_msg_ctx_add_pkt(ctx, pkt, mctp->max_message_size);
