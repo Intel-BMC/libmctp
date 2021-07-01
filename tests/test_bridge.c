@@ -78,6 +78,8 @@ int main(void)
 	struct test_ctx _ctx, *ctx = &_ctx;
 
 	ctx->mctp = mctp_init();
+	assert(ctx->mctp);
+
 	ctx->bindings[0] = mctp_binding_bridge_init();
 	ctx->bindings[1] = mctp_binding_bridge_init();
 
