@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <linux/errno-base.h>
 
 #ifdef MCTP_HAVE_FILEIO
 #include <fcntl.h>
@@ -205,9 +206,12 @@ static int mctp_smbus_tx(struct mctp_binding_smbus *smbus, const uint8_t len,
 #ifdef I2C_M_HOLD
 	int rc;
 
-	if (pull_model_active && (smbus_pull_model_unhold_mux() < 0)) {
-		mctp_prerr("%s: Failed to unhold the bus.", __func__);
-		return -1;
+	if (pull_model_active) {
+		rc = smbus_pull_model_unhold_mux();
+		if (rc < 0) {
+			mctp_prerr("%s: Failed to unhold the bus.", __func__);
+			return rc;
+		}
 	}
 	if (pkt_pvt->mux_flags) {
 		uint16_t holdtimeout =
@@ -282,7 +286,7 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	smbus_hdr_tx->command_code = MCTP_COMMAND_CODE;
 	if (!pkt_pvt) {
 		mctp_prerr("Binding private information not available");
-		return -1;
+		return -EINVAL;
 	}
 	/* the length field in the header excludes smbus framing
 	* and escape sequences.
@@ -296,7 +300,7 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	if (i2c_message_len > sizeof(smbus->txbuf)) {
 		mctp_prerr(
 			"tx message length exceeds max smbus message length");
-		return -1;
+		return -EINVAL;
 	}
 
 	memcpy(smbus->txbuf + tx_buf_len, &pkt->data[pkt->start], pkt_length);
@@ -305,9 +309,15 @@ static int mctp_binding_smbus_tx(struct mctp_binding *b,
 	smbus->txbuf[tx_buf_len] = calculate_pec_byte(smbus->txbuf, tx_buf_len,
 						      pkt_pvt->slave_addr);
 
-	if (mctp_smbus_tx(smbus, i2c_message_len, pkt_pvt) < 0) {
+	int ret = mctp_smbus_tx(smbus, i2c_message_len, pkt_pvt);
+	if (ret == -EPERM) {
+		mctp_prdebug(
+			"Error in tx of smbus message; Operation not permitted");
+		return ret;
+	}
+	if (ret < 0) {
 		mctp_prerr("Error in tx of smbus message");
-		return -1;
+		return ret;
 	}
 
 	return 0;

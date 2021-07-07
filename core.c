@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <linux/errno-base.h>
+
 #undef pr_fmt
 #define pr_fmt(fmt) "core: " fmt
 
@@ -693,9 +695,15 @@ static int mctp_send_tx_queue(struct mctp_bus *bus)
 		if (rc < 0) {
 			if (rc == TX_DISABLED_ERR)
 				break;
-			else {
+			else if (rc == -EPERM) {
+				mctp_prdebug(
+					"Operation not permitted, flushing the message");
+				flush_message(bus);
+				continue;
+			} else {
 				mctp_prerr(
-					"Failed to tx mctp packet;flushing message");
+					"Failed to tx mctp packet;flushing message; rc:%d",
+					rc);
 				flush_message(bus);
 				continue;
 			}

@@ -20,3 +20,4 @@ utils/mctp-astlpc-daemon.c
 utils/mctp-demux-daemon.c
 utils/mctp-in.c
 utils/mctp-pipe.c
+linux/errno-base.h
