@@ -30,6 +30,12 @@ struct mctp_hdr {
 #define MCTP_HDR_FLAG_SOM (1 << 7)
 #define MCTP_HDR_FLAG_EOM (1 << 6)
 #define MCTP_HDR_FLAG_TO (1 << 3)
+#define MCTP_HDR_VER_SHIFT 0
+#define MCTP_HDR_VER_MASK 0xf
+#define MCTP_HDR_SET_VER(field, ver)                                           \
+	((field) |= (((ver)&MCTP_HDR_VER_MASK) << MCTP_HDR_VER_SHIFT))
+#define MCTP_HDR_GET_VER(field)                                                \
+	(((field) >> MCTP_HDR_VER_SHIFT) & MCTP_HDR_VER_MASK)
 #define MCTP_HDR_SEQ_SHIFT 4
 #define MCTP_HDR_SEQ_MASK 0x3
 #define MCTP_HDR_SET_SEQ(field, seq)                                           \

@@ -58,8 +58,9 @@ struct mctp {
 	 */
 	struct mctp_msg_ctx msg_ctxs[16];
 
-	enum { ROUTE_ENDPOINT,
-	       ROUTE_BRIDGE,
+	enum {
+		ROUTE_ENDPOINT,
+		ROUTE_BRIDGE,
 	} route_policy;
 	/* Control message RX callback. */
 	mctp_rx_fn control_rx;
@@ -551,7 +552,7 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 	if (mctp->route_policy == ROUTE_ENDPOINT &&
 	    ((hdr->dest != bus->eid && hdr->dest != MCTP_EID_NULL &&
 	      hdr->dest != MCTP_EID_BROADCAST) ||
-	     binding->version != hdr->ver))
+	     MCTP_HDR_GET_VER(hdr->ver) != MCTP_HDR_GET_VER(binding->version)))
 		goto out;
 
 	tag_owner = hdr->flags_seq_tag & MCTP_HDR_FLAG_TO;
@@ -764,7 +765,8 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 			       bus->binding->pkt_priv_size);
 
 		/* todo: tags */
-		hdr->ver = bus->binding->version & 0xf;
+		hdr->ver = 0;
+		MCTP_HDR_SET_VER(hdr->ver, bus->binding->version);
 		hdr->dest = dest;
 		hdr->src = src;
 		hdr->flags_seq_tag = 0;
