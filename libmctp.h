@@ -119,7 +119,12 @@ typedef void (*mctp_rx_fn)(uint8_t src_eid, void *data, void *msg, size_t len,
 			   bool tag_owner, uint8_t tag,
 			   void *msg_binding_private);
 
+/* MCTP receive callback with headers also included in payload. */
+typedef void (*mctp_raw_rx_cb)(void *data, void *msg, size_t len,
+			       void *msg_binding_private);
+
 int mctp_set_rx_all(struct mctp *mctp, mctp_rx_fn fn, void *data);
+int mctp_set_rx_raw(struct mctp *mctp, mctp_raw_rx_cb fn);
 
 /* Format MCTP packet from arguments and send. This will include adding headers
  * and assmebling if needed.

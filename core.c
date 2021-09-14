@@ -51,6 +51,7 @@ struct mctp {
 
 	/* Message RX callback */
 	mctp_rx_fn message_rx;
+	mctp_raw_rx_cb message_rx_raw;
 	void *message_rx_data;
 
 	/* Message reassembly.
@@ -355,6 +356,12 @@ int mctp_set_rx_all(struct mctp *mctp, mctp_rx_fn fn, void *data)
 	return 0;
 }
 
+int mctp_set_rx_raw(struct mctp *mctp, mctp_raw_rx_cb fn)
+{
+	mctp->message_rx_raw = fn;
+	return 0;
+}
+
 static struct mctp_bus *find_bus_for_eid(struct mctp *mctp, mctp_eid_t dest
 					 __attribute__((unused)))
 {
@@ -551,8 +558,16 @@ void mctp_bus_rx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 	if (mctp->route_policy == ROUTE_ENDPOINT &&
 	    ((hdr->dest != bus->eid && hdr->dest != MCTP_EID_NULL &&
 	      hdr->dest != MCTP_EID_BROADCAST) ||
-	     MCTP_HDR_GET_VER(hdr->ver) != MCTP_HDR_GET_VER(binding->version)))
+	     MCTP_HDR_GET_VER(hdr->ver) !=
+		     MCTP_HDR_GET_VER(binding->version))) {
+		/* Packet is for different eid. Bridge the packet */
+		if (mctp->message_rx_raw)
+			mctp->message_rx_raw(mctp->message_rx_data, hdr,
+					     pkt->end - pkt->mctp_hdr_off,
+					     pkt->msg_binding_private);
+
 		goto out;
+	}
 
 	tag_owner = hdr->flags_seq_tag & MCTP_HDR_FLAG_TO;
 	flags = hdr->flags_seq_tag & (MCTP_HDR_FLAG_SOM | MCTP_HDR_FLAG_EOM);
