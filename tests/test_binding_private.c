@@ -108,6 +108,13 @@ void test_null_prv_data(void)
 	mctp_binding_test_register_bus(b1, mctp, TEST_EID);
 	mctp_message_tx(mctp, TEST_EID, (void *)payload, sizeof(payload), true,
 			0, NULL);
+
+	assert(mctp_message_raw_tx(mctp, (void *)payload, sizeof(payload),
+				   NULL) < 0);
+	assert(mctp_message_raw_tx(mctp, NULL, sizeof(payload), NULL) < 0);
+	assert(mctp_message_raw_tx(mctp, (void *)payload,
+				   sizeof(struct mctp_hdr), NULL) < 0);
+
 	mctp_binding_test_rx_raw(b1, payload, sizeof(payload), NULL);
 
 	mctp_binding_test_destroy(b1);
@@ -187,11 +194,38 @@ void test_prv_data_deallocated(void)
 	mctp_destroy(mctp);
 }
 
+void test_mctp_raw_tx(void)
+{
+	struct mctp *mctp;
+	struct mctp_binding *b4;
+	size_t binding_pvt_size = 5;
+
+	mctp = mctp_init();
+	assert(mctp);
+
+	b4 = mctp_binding_test_init(binding_pvt_size);
+	assert(b4);
+
+	test_binding_pvt = (uint8_t *)__mctp_alloc(binding_pvt_size);
+	fill_test_binding_pvt_data(test_binding_pvt, binding_pvt_size);
+
+	mctp_binding_test_register_bus(b4, mctp, TEST_EID);
+	mctp_binding_set_tx_enabled(b4, true);
+
+	assert(mctp_message_raw_tx(mctp, (void *)payload, sizeof(payload),
+				   test_binding_pvt) == 0);
+
+	mctp_binding_test_destroy(b4);
+	__mctp_free(test_binding_pvt);
+	mctp_destroy(mctp);
+}
+
 static const struct {
 	void (*test)(void);
 } msg_binding_private_tests[] = { { test_null_prv_data },
 				  { test_typical_prv_data },
-				  { test_prv_data_deallocated } };
+				  { test_prv_data_deallocated },
+				  { test_mctp_raw_tx } };
 
 int main()
 {

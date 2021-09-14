@@ -121,8 +121,16 @@ typedef void (*mctp_rx_fn)(uint8_t src_eid, void *data, void *msg, size_t len,
 
 int mctp_set_rx_all(struct mctp *mctp, mctp_rx_fn fn, void *data);
 
+/* Format MCTP packet from arguments and send. This will include adding headers
+ * and assmebling if needed.
+ */
 int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg, size_t len,
 		    bool tag_owner, uint8_t tag, void *msg_binding_private);
+/* Transmit raw MCTP packet bytes including MCTP headers. Destination EID will
+ * be taken from mctp header.
+ */
+int mctp_message_raw_tx(struct mctp *mctp, const void *msg, size_t len,
+			void *msg_binding_private);
 
 /* hardware bindings */
 struct mctp_binding {

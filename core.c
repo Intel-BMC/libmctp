@@ -58,9 +58,8 @@ struct mctp {
 	 */
 	struct mctp_msg_ctx msg_ctxs[16];
 
-	enum {
-		ROUTE_ENDPOINT,
-		ROUTE_BRIDGE,
+	enum { ROUTE_ENDPOINT,
+	       ROUTE_BRIDGE,
 	} route_policy;
 	/* Control message RX callback. */
 	mctp_rx_fn control_rx;
@@ -796,6 +795,58 @@ static int mctp_message_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
 	mctp_prdebug("Enqueued %d packets", i);
 
 	return mctp_send_tx_queue(bus);
+}
+
+static int mctp_message_raw_tx_on_bus(struct mctp *mctp, struct mctp_bus *bus,
+				      const void *raw_msg, size_t msg_len,
+				      void *msg_binding_private)
+{
+	struct mctp_pktbuf *pkt;
+	struct mctp_hdr *hdr;
+
+	pkt = mctp_pktbuf_alloc(bus->binding, msg_len);
+	if (!pkt) {
+		mctp_prerr("Not enough memory to allocate MCTP packet");
+		return -1;
+	}
+	if (msg_binding_private) {
+		memcpy(pkt->msg_binding_private, msg_binding_private,
+		       bus->binding->pkt_priv_size);
+	}
+	hdr = mctp_pktbuf_hdr(pkt);
+	memcpy(hdr, (uint8_t *)raw_msg, msg_len);
+	if (bus->tx_queue_tail)
+		bus->tx_queue_tail->next = pkt;
+	else
+		bus->tx_queue_head = pkt;
+	bus->tx_queue_tail = pkt;
+	/* TODO: In case of tx error flush_message is called. However since that
+	 * is based on EOM tag it wont work for bridge packets.
+	 */
+	return mctp_send_tx_queue(bus);
+}
+
+int mctp_message_raw_tx(struct mctp *mctp, const void *msg, size_t len,
+			void *msg_binding_private)
+{
+	struct mctp_bus *bus;
+	uint8_t *msg_arr;
+	mctp_eid_t dest_eid;
+
+	if (!msg || len < sizeof(struct mctp_hdr))
+		return -1;
+
+	msg_arr = (uint8_t *)msg;
+	dest_eid = msg_arr[1];
+	bus = find_bus_for_eid(mctp, dest_eid);
+	if (len > bus->binding->pkt_size) {
+		mctp_prerr(
+			"%zu bytes cannot be transferred in a single bridge packet",
+			len);
+		return -1;
+	}
+	return mctp_message_raw_tx_on_bus(mctp, bus, msg, len,
+					  msg_binding_private);
 }
 
 int mctp_message_tx(struct mctp *mctp, mctp_eid_t eid, void *msg, size_t len,
