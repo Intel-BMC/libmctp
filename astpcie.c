@@ -221,6 +221,11 @@ static int mctp_astpcie_tx(struct mctp_binding *b, struct mctp_pktbuf *pkt)
 	uint8_t pad = mctp_astpcie_tx_get_pad_len(pkt);
 	ssize_t write_len, len;
 
+	if (pkt_prv->remote_id == astpcie->bdf) {
+		mctp_prerr("Invalid Target ID (matches own BDF)");
+		return -1;
+	}
+
 	memcpy(hdr, &mctp_pcie_hdr_template_be, sizeof(*hdr));
 
 	mctp_prdebug("TX, len: %d, pad: %d", payload_len_dw, pad);
