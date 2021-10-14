@@ -30,9 +30,40 @@ static void test_get_eid_encode()
 	assert(rq == MCTP_CTRL_HDR_FLAG_REQUEST);
 }
 
+static void test_encode_ctrl_cmd_req_update_routing_info(void)
+{
+	struct get_routing_table_entry_with_address entries[1];
+	/* Array to hold routing info update request*/
+	uint8_t buf[256];
+	struct mctp_ctrl_cmd_routing_info_update *req =
+		(struct mctp_ctrl_cmd_routing_info_update *)buf;
+	size_t new_size = 0;
+	const size_t exp_new_size =
+		sizeof(struct mctp_ctrl_cmd_routing_info_update) + 4;
+
+	entries[0].routing_info.eid_range_size = 1;
+	entries[0].routing_info.starting_eid = 9;
+	entries[0].routing_info.entry_type = 2;
+	entries[0].routing_info.phys_transport_binding_id = 1;
+	entries[0].routing_info.phys_media_type_id = 4;
+	entries[0].routing_info.phys_address_size = 1;
+	entries[0].phys_address[0] = 0x12;
+
+	assert(mctp_encode_ctrl_cmd_routing_information_update(
+		req, 0xFF, entries, 1, &new_size));
+
+	assert(new_size == exp_new_size);
+	assert(req->count == 1);
+
+	assert(!mctp_encode_ctrl_cmd_routing_information_update(
+		NULL, 0xFF, entries, 1, &new_size));
+	assert(!mctp_encode_ctrl_cmd_routing_information_update(req, 0xFF, NULL,
+								1, &new_size));
+}
 int main(int argc, char *argv[])
 {
 	test_get_eid_encode();
+	test_encode_ctrl_cmd_req_update_routing_info();
 
 	return EXIT_SUCCESS;
 }

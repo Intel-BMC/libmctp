@@ -259,6 +259,32 @@ struct get_routing_table_entry {
 	uint8_t phys_address_size;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_resp_routing_info_update {
+	struct mctp_ctrl_msg_hdr ctrl_hdr;
+	uint8_t completion_code;
+} __attribute__((__packed__));
+
+struct mctp_ctrl_cmd_routing_info_update {
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
+	uint8_t count;
+	uint8_t entries[0];
+} __attribute__((__packed__));
+
+struct routing_info_update_entry {
+	uint8_t type;
+	uint8_t eid_count;
+	uint8_t starting_eid;
+	uint8_t address[0];
+} __attribute__((__packed__));
+
+/* Assume 8 byte is enough for holding largest physical address */
+#define MAX_PHYSICAL_ADDRESS_SIZE 8
+
+struct get_routing_table_entry_with_address {
+	struct get_routing_table_entry routing_info;
+	uint8_t phys_address[MAX_PHYSICAL_ADDRESS_SIZE];
+} __attribute__((__packed__));
+
 struct mctp_ctrl_resp_get_vdm_support {
 	struct mctp_ctrl_msg_hdr ctrl_hdr;
 	uint8_t completion_code;
@@ -340,6 +366,12 @@ bool mctp_encode_ctrl_cmd_discovery_notify(
 bool mctp_encode_ctrl_cmd_get_routing_table(
 	struct mctp_ctrl_cmd_get_routing_table *get_routing_table_cmd,
 	uint8_t rq_dgram_inst, uint8_t entry_handle);
+
+bool mctp_encode_ctrl_cmd_routing_information_update(
+	struct mctp_ctrl_cmd_routing_info_update *routing_info_update_cmd,
+	uint8_t rq_dgram_inst,
+	struct get_routing_table_entry_with_address *entries,
+	uint8_t no_of_entries, size_t *new_req_size);
 
 void mctp_set_uuid(struct mctp *mctp, guid_t uuid);
 

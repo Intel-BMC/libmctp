@@ -1036,6 +1036,42 @@ bool mctp_encode_ctrl_cmd_get_routing_table(
 	return true;
 }
 
+bool mctp_encode_ctrl_cmd_routing_information_update(
+	struct mctp_ctrl_cmd_routing_info_update *routing_info_update_cmd,
+	uint8_t rq_dgram_inst,
+	struct get_routing_table_entry_with_address *entries,
+	uint8_t no_of_entries, size_t *new_req_size)
+{
+	struct routing_info_update_entry *cur_entry;
+	uint8_t *entry_dest;
+	uint8_t i;
+
+	/* TODO. Check dest has enough room for new data */
+	if (!routing_info_update_cmd || !entries || !new_req_size ||
+	    no_of_entries == 0)
+		return false;
+	encode_ctrl_cmd_header(&routing_info_update_cmd->ctrl_msg_hdr,
+			       rq_dgram_inst,
+			       MCTP_CTRL_CMD_ROUTING_INFO_UPDATE);
+	routing_info_update_cmd->count = no_of_entries;
+
+	entry_dest = routing_info_update_cmd->entries;
+	for (i = 0; i < no_of_entries; i++) {
+		cur_entry = (struct routing_info_update_entry *)entry_dest;
+		cur_entry->type = entries[i].routing_info.entry_type;
+		cur_entry->eid_count = entries[i].routing_info.eid_range_size;
+		cur_entry->starting_eid = entries[i].routing_info.starting_eid;
+		memcpy(cur_entry->address, entries[i].phys_address,
+		       entries[i].routing_info.phys_address_size);
+		entry_dest = entry_dest +
+			     sizeof(struct routing_info_update_entry) +
+			     entries[i].routing_info.phys_address_size;
+	}
+	*new_req_size =
+		(size_t)(entry_dest - (uint8_t *)(routing_info_update_cmd));
+	return true;
+}
+
 static inline mctp_eid_t mctp_bus_get_eid(struct mctp_bus *bus)
 {
 	return bus->eid;
