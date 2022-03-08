@@ -98,11 +98,56 @@ static void test_encode_ctrl_cmd_rsp_get_routing_table(void)
 							  &new_size));
 }
 
+static void test_allocate_eid_pool_encode()
+{
+	bool ret;
+	const uint8_t first_eid = 9;
+	const uint8_t eid_pool_size = 10;
+	uint8_t expected_instance_id = 0x01;
+	mctp_ctrl_cmd_allocate_eids_op operation = allocate_eids;
+	struct mctp_ctrl_cmd_allocate_eids cmd_allocate_eid;
+	uint8_t rq_d_inst = expected_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST;
+
+	ret = mctp_encode_ctrl_cmd_allocate_eids(&cmd_allocate_eid, rq_d_inst,
+						 operation, eid_pool_size,
+						 first_eid);
+	assert(ret == true);
+	assert(cmd_allocate_eid.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_ALLOCATE_ENDPOINT_IDS);
+	assert(cmd_allocate_eid.ctrl_msg_hdr.rq_dgram_inst == rq_d_inst);
+	assert(cmd_allocate_eid.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+
+	assert(cmd_allocate_eid.operation == operation);
+
+	assert(cmd_allocate_eid.eid_pool_size == eid_pool_size);
+	assert(cmd_allocate_eid.first_eid == first_eid);
+}
+
+static void test_negation_allocate_eid_pool_encode()
+{
+	bool ret;
+	uint8_t sample_eid = 10;
+	const uint8_t eid_pool_size = 10;
+	uint8_t expected_instance_id = 0x01;
+	mctp_ctrl_cmd_allocate_eids_op operation = allocate_eids;
+	uint8_t rq_d_inst = expected_instance_id | MCTP_CTRL_HDR_FLAG_REQUEST;
+	struct mctp_ctrl_cmd_allocate_eids *cmd_allocate_eid = NULL;
+
+	ret = mctp_encode_ctrl_cmd_allocate_eids(cmd_allocate_eid, rq_d_inst,
+						 operation, eid_pool_size,
+						 sample_eid);
+	assert(ret == false);
+}
+
 int main(int argc, char *argv[])
 {
 	test_get_eid_encode();
 	test_encode_ctrl_cmd_req_update_routing_info();
 	test_encode_ctrl_cmd_rsp_get_routing_table();
+	test_allocate_eid_pool_encode();
+	/*Negative test cases */
+	test_negation_allocate_eid_pool_encode();
 
 	return EXIT_SUCCESS;
 }

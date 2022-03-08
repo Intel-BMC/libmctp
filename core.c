@@ -1036,6 +1036,22 @@ bool mctp_encode_ctrl_cmd_get_routing_table(
 	return true;
 }
 
+bool mctp_encode_ctrl_cmd_allocate_eids(
+	struct mctp_ctrl_cmd_allocate_eids *allocate_eids_cmd,
+	uint8_t rq_dgram_inst, mctp_ctrl_cmd_allocate_eids_op op,
+	uint8_t pool_size, uint8_t eid)
+{
+	if (!allocate_eids_cmd)
+		return false;
+
+	encode_ctrl_cmd_header(&allocate_eids_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_ALLOCATE_ENDPOINT_IDS);
+	allocate_eids_cmd->operation = op;
+	allocate_eids_cmd->eid_pool_size = pool_size;
+	allocate_eids_cmd->first_eid = eid;
+	return true;
+}
+
 bool mctp_encode_ctrl_cmd_routing_information_update(
 	struct mctp_ctrl_cmd_routing_info_update *routing_info_update_cmd,
 	uint8_t rq_dgram_inst,
