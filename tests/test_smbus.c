@@ -184,7 +184,7 @@ static void run_smbus_rx_test(mctp_rx_fn rx_fn)
 	destroy_smbus_test_ctx(&smbus_ctx);
 }
 
-static void negative_text_smbus_rx(mctp_eid_t src, void *data, void *msg,
+static void negative_test_smbus_rx(mctp_eid_t src, void *data, void *msg,
 				   size_t len, bool tag_owner, uint8_t tag,
 				   void *ext)
 {
@@ -346,7 +346,7 @@ static void run_smbus_rx_test_negative_pec(mctp_rx_fn rx_fn)
 	destroy_smbus_test_ctx(&smbus_ctx);
 }
 
-static void negative_text_smbus_rx_pec(mctp_eid_t src, void *data, void *msg,
+static void negative_test_smbus_rx_pec(mctp_eid_t src, void *data, void *msg,
 				       size_t len, bool tag_owner, uint8_t tag,
 				       void *ext)
 {
@@ -362,9 +362,9 @@ int main(void)
 	run_smbus_rx_test_pec(test_smbus_rx_pec);
 
 	/*Negetive test case*/
-	run_smbus_rx_test_negative(negative_text_smbus_rx);
+	run_smbus_rx_test_negative(negative_test_smbus_rx);
 
-	run_smbus_rx_test_negative_pec(negative_text_smbus_rx_pec);
+	run_smbus_rx_test_negative_pec(negative_test_smbus_rx_pec);
 
 	return 0;
 }
