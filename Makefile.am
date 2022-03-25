@@ -21,6 +21,11 @@ libmctp_la_SOURCES += astpcie.c
 include_HEADERS += libmctp-astpcie.h
 endif
 
+if LIBMCTP_BINDING_smbus
+libmctp_la_SOURCES += smbus.c
+include_HEADERS += libmctp-smbus.h
+endif
+
 if HAVE_SYSTEMD
 systemdsystemunit_DATA = \
 	mctp-demux.service
