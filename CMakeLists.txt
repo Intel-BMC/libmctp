@@ -26,7 +26,7 @@ add_definitions (-DMCTP_HAVE_FILEIO)
 add_definitions (-DMCTP_HAVE_STDIO)
 add_definitions (-DMCTP_DEFAULT_ALLOC)
 
-add_library (mctp_intel STATIC alloc.c astlpc.c core.c log.c libmctp.h serial.c astpcie.c smbus.c)
+add_library (mctp_intel STATIC alloc.c asti3c.c astlpc.c core.c log.c libmctp.h serial.c astpcie.c smbus.c)
 
 target_include_directories (mctp_intel PUBLIC
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -80,6 +80,10 @@ add_test (NAME encode_decode COMMAND test_encode_decode)
 
 add_executable (mctp_astpcie_register_type utils/mctp-astpcie-register-type.c)
 target_link_libraries (mctp_astpcie_register_type mctp_intel)
+
+add_executable (test_asti3c tests/test_asti3c.c)
+target_link_libraries (test_asti3c mctp_intel)
+add_test (NAME asti3c COMMAND test_asti3c)
 
 install (TARGETS mctp_intel DESTINATION lib)
 install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
