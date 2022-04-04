@@ -1144,6 +1144,20 @@ int mctp_ctrl_cmd_set_endpoint_id(struct mctp *mctp, mctp_eid_t dest_eid,
 	return 0;
 }
 
+bool mctp_encode_ctrl_cmd_query_hop(
+	struct mctp_ctrl_cmd_query_hop *query_hop_cmd, uint8_t rq_dgram_inst,
+	const uint8_t eid, const uint8_t mctp_ctrl_msg_type)
+{
+	if (!query_hop_cmd) {
+		return false;
+	}
+
+	encode_ctrl_cmd_header(&query_hop_cmd->ctrl_msg_hdr, rq_dgram_inst,
+			       MCTP_CTRL_CMD_QUERY_HOP);
+	query_hop_cmd->mctp_ctrl_msg_type = mctp_ctrl_msg_type;
+	query_hop_cmd->target_eid = eid;
+	return true;
+}
 /*
  * @brief Retrieves a byte of medium-specific data from the binding.
  * See DSP0236 1.3.0 12.4 (byte 4).

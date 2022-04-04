@@ -98,6 +98,42 @@ static void test_encode_ctrl_cmd_rsp_get_routing_table(void)
 							  &new_size));
 }
 
+void test_encode_ctrl_cmd_query_hop(void)
+{
+	struct mctp_ctrl_cmd_query_hop cmd_query_hop;
+	uint8_t sample_eid = 8;
+	uint8_t instance_id = 0x01;
+	assert(mctp_encode_ctrl_cmd_query_hop(
+		&cmd_query_hop, (instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+		sample_eid, MCTP_CTRL_HDR_MSG_TYPE));
+
+	assert(cmd_query_hop.ctrl_msg_hdr.command_code ==
+	       MCTP_CTRL_CMD_QUERY_HOP);
+
+	assert(cmd_query_hop.ctrl_msg_hdr.rq_dgram_inst ==
+	       (instance_id | MCTP_CTRL_HDR_FLAG_REQUEST));
+
+	assert(cmd_query_hop.ctrl_msg_hdr.ic_msg_type ==
+	       MCTP_CTRL_HDR_MSG_TYPE);
+
+	assert(cmd_query_hop.target_eid == sample_eid);
+	assert(cmd_query_hop.mctp_ctrl_msg_type == MCTP_CTRL_HDR_MSG_TYPE);
+}
+
+/*Negative Test cases for the commands*/
+
+static void test_negative_encode_ctrl_cmd_query_hop()
+{
+	uint8_t sample_eid = 8;
+	uint8_t instance_id = 0x01;
+	struct mctp_ctrl_cmd_query_hop *query_hop = NULL;
+	bool rc = true;
+	rc = mctp_encode_ctrl_cmd_query_hop(
+		query_hop, (instance_id | MCTP_CTRL_HDR_FLAG_REQUEST),
+		sample_eid, MCTP_CTRL_HDR_MSG_TYPE);
+	assert(!rc);
+}
+
 static void test_allocate_eid_pool_encode()
 {
 	bool ret;
@@ -145,8 +181,10 @@ int main(int argc, char *argv[])
 	test_get_eid_encode();
 	test_encode_ctrl_cmd_req_update_routing_info();
 	test_encode_ctrl_cmd_rsp_get_routing_table();
+	test_encode_ctrl_cmd_query_hop();
 	test_allocate_eid_pool_encode();
 	/*Negative test cases */
+	test_negative_encode_ctrl_cmd_query_hop();
 	test_negation_allocate_eid_pool_encode();
 
 	return EXIT_SUCCESS;

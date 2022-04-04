@@ -84,6 +84,12 @@ struct mctp_ctrl_cmd_get_routing_table {
 	uint8_t entry_handle;
 } __attribute__((__packed__));
 
+struct mctp_ctrl_cmd_query_hop {
+	struct mctp_ctrl_msg_hdr ctrl_msg_hdr;
+	uint8_t target_eid;
+	uint8_t mctp_ctrl_msg_type;
+} __attribute__((__packed__));
+
 #define MCTP_CTRL_HDR_MSG_TYPE 0
 #define MCTP_CTRL_HDR_FLAG_REQUEST (1 << 7)
 #define MCTP_CTRL_HDR_FLAG_DGRAM (1 << 6)
@@ -398,6 +404,10 @@ bool mctp_encode_ctrl_cmd_rsp_get_routing_table(
 	struct mctp_ctrl_resp_get_routing_table *resp,
 	struct get_routing_table_entry_with_address *entries,
 	uint8_t no_of_entries, size_t *resp_size);
+
+bool mctp_encode_ctrl_cmd_query_hop(
+	struct mctp_ctrl_cmd_query_hop *query_hop_cmd, uint8_t rq_dgram_inst,
+	const uint8_t eid, const uint8_t mctp_ctrl_msg_type);
 
 bool mctp_encode_ctrl_cmd_allocate_eids(
 	struct mctp_ctrl_cmd_allocate_eids *set_eid_cmd, uint8_t rq_dgram_inst,
