@@ -19,6 +19,13 @@ extern "C" {
 
 #include "libmctp.h"
 
+/* MCTP over I3C transmission unit needs to be atleast MCTP_BTU +
+   MCTP_HEADER + PEC_BYTE_SIZE i.e. 69 bytes. Support buffer sizes
+   of minimum transmission sizes */
+#define MCTP_I3C_BUFFER_SIZE 100
+#define MCTP_HEADER_SIZE 4
+#define MCTP_I3C_PEC_SIZE 1
+
 struct mctp_binding_asti3c {
 	struct mctp_binding binding;
 };
@@ -29,6 +36,10 @@ struct mctp_asti3c_pkt_private {
 } __attribute__((__packed__));
 
 struct mctp_binding_asti3c *mctp_asti3c_init(void);
+
+void mctp_asti3c_free(struct mctp_binding_asti3c *asti3c);
+int mctp_asti3c_poll(int fd, int timeout);
+int mctp_asti3c_rx(struct mctp_binding_asti3c *asti3c, int fd);
 
 #ifdef __cplusplus
 }
