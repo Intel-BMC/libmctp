@@ -7,9 +7,33 @@
 #include "libmctp-alloc.h"
 #include "libmctp-asti3c.h"
 
+#undef pr_fmt
+#define pr_fmt(x) "asti3c: " x
+
 static int mctp_asti3c_tx(struct mctp_binding *binding, struct mctp_pktbuf *pkt)
 {
-	/* TODO: Implement TX functionality */
+	struct mctp_asti3c_pkt_private *pkt_prv =
+		(struct mctp_asti3c_pkt_private *)pkt->msg_binding_private;
+	ssize_t write_len, len;
+
+	if (pkt_prv->fd < 0) {
+		mctp_prerr("Invalid file descriptor passed");
+		return -1;
+	}
+
+	len = mctp_pktbuf_size(pkt);
+
+	/* CRC/PECs are appended in hardware, skipping calculation here */
+
+	mctp_prdebug("Transmitting packet, len: %zu", len);
+	mctp_trace_tx(pkt->data, len);
+
+	write_len = write(pkt_prv->fd, pkt->data, len);
+	if (write_len != len) {
+		mctp_prerr("TX error");
+		return -1;
+	}
+
 	return 0;
 }
 
