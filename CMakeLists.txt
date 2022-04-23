@@ -86,4 +86,4 @@ target_link_libraries (test_asti3c mctp_intel)
 add_test (NAME asti3c COMMAND test_asti3c)
 
 install (TARGETS mctp_intel DESTINATION lib)
-install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h DESTINATION include)
+install (FILES libmctp.h libmctp-cmds.h libmctp-vdpci.h libmctp-smbus.h libmctp-astpcie.h libmctp-msgtypes.h libmctp-asti3c.h DESTINATION include)
