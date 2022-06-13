@@ -94,7 +94,7 @@ int mctp_astlpc_mmio_kcs_write(void *data, enum mctp_binding_astlpc_kcs_reg reg,
 
 	if (reg == MCTP_ASTLPC_KCS_REG_STATUS)
 		mmio->kcs[reg] = val & ~0xaU;
-	else
+	else if (reg == MCTP_ASTLPC_KCS_REG_DATA)
 		mmio->kcs[reg] = val;
 
 	mctp_prdebug("%s: 0x%hhx to %s", __func__, val,
